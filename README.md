@@ -5,9 +5,11 @@ This GitHub project template is for IBM Hackathon projects. It includes pre-conf
 ## 🚀 Quick Start
 
 1. **Use this template to create your project:**
-   - Click "Use this template" button above and select "Create a new repository"
+   - Click "Use this template" button above
+   - Select your hackathon organization as the owner
    - Name your repository
-   - Click "Create repository"
+   - Ensure "Private" is selected
+   - Click "Create repository from template"
 
 2. **Clone your new repository:**
 
@@ -46,6 +48,7 @@ This template includes:
 - **`.gitignore`** - Prevents committing credentials and live session files
 - **`.bobignore`** - Prevents AI assistants from logging credentials
 - **`.env.example`** - Template for your environment variables
+- **`SECURITY.md`** - Comprehensive security guidelines
 
 ## 📋 Before Every Commit
 
