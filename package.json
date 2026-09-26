@@ -48,14 +48,18 @@
           {
             "id": "welcome",
             "title": "Welcome",
-        "description": "What this extension does.",
-        "media": { "markdown": "./media/walkthrough/01-welcome.md" }
+            "description": "What this extension does.",
+            "media": {
+              "markdown": "./media/walkthrough/01-welcome.md"
+            }
           },
           {
             "id": "open",
             "title": "Open the Visualizer",
-        "description": "Launch the graph panel.",
-        "media": { "markdown": "./media/walkthrough/02-open.md" },
+            "description": "Launch the graph panel.",
+            "media": {
+              "markdown": "./media/walkthrough/02-open.md"
+            },
             "completionEvents": [
               "onCommand:bobai-visualizer.openVisualizer"
             ]
@@ -63,20 +67,26 @@
           {
             "id": "workspace",
             "title": "Read the Workspace Graph",
-        "description": "One node per file, edges show imports.",
-        "media": { "markdown": "./media/walkthrough/03-workspace.md" }
+            "description": "One node per file, edges show imports.",
+            "media": {
+              "markdown": "./media/walkthrough/03-workspace.md"
+            }
           },
           {
             "id": "drilldown",
             "title": "Drill into a File",
-        "description": "Click a file node for its flowchart.",
-        "media": { "markdown": "./media/walkthrough/04-drilldown.md" }
+            "description": "Click a file node for its flowchart.",
+            "media": {
+              "markdown": "./media/walkthrough/04-drilldown.md"
+            }
           },
           {
             "id": "pseudocode",
             "title": "Read Pseudocode and Jump to Source",
-        "description": "Use the side panel and Open in IDE.",
-        "media": { "markdown": "./media/walkthrough/05-pseudocode.md" }
+            "description": "Use the side panel and Open in IDE.",
+            "media": {
+              "markdown": "./media/walkthrough/05-pseudocode.md"
+            }
           }
         ]
       }
@@ -97,14 +107,15 @@
     "test:integration": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.126.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "typescript-eslint": "^8.61.1",
+    "@types/vscode": "^1.126.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "cytoscape": "^3.26.0",
     "eslint": "^10.5.0",
     "typescript": "^6.0.3",
-    "@vscode/test-cli": "^0.0.15",
-    "@vscode/test-electron": "^3.0.0"
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "diff": "^8.0.4",

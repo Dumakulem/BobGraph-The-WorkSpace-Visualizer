@@ -152,42 +152,42 @@ let isLoading = false;
     // CSS silently left the graph in the old colours.
     const nodeStyles = {
         file: {
-            background: themeColor('--accent-slate', '#64748b'),
+            'background-color': themeColor('--accent-slate', '#64748b'),
             shape: 'rectangle',
             label: 'font-size:12px; color:#ffffff; font-weight:bold; text-valign:center; text-halign:center;',
             width: 140,
             height: 50
         },
         class: {
-            background: themeColor('--accent-blue', '#007acc'),
+            'background-color': themeColor('--accent-blue', '#007acc'),
             shape: 'round-rectangle',
             label: 'font-size:12px; color:#ffffff; font-weight:bold; text-valign:center; text-halign:center;',
             width: 120,
             height: 50
         },
         method: {
-            background: themeColor('--accent-indigo', '#5865f2'),
+            'background-color': themeColor('--accent-indigo', '#5865f2'),
             shape: 'ellipse',
             label: 'font-size:11px; color:#ffffff; text-valign:center; text-halign:center;',
             width: 100,
             height: 40
         },
         function: {
-            background: themeColor('--accent-green', '#4ade80'),
+            'background-color': themeColor('--accent-green', '#4ade80'),
             shape: 'ellipse',
             label: 'font-size:11px; color:#000000; text-valign:center; text-halign:center;',
             width: 100,
             height: 40
         },
         start_end: {
-            background: themeColor('--accent-gold', '#d4af37'),
+            'background-color': themeColor('--accent-gold', '#d4af37'),
             shape: 'round-rectangle',
             label: 'font-size:12px; color:#000000; font-weight:bold; text-valign:center; text-halign:center;',
             width: 100,
             height: 40
         },
         decision: {
-            background: themeColor('--accent-red', '#e14b4b'),
+            'background-color': themeColor('--accent-red', '#e14b4b'),
             shape: 'diamond',
             label: 'font-size:11px; color:#ffffff; text-valign:center; text-halign:center;',
             width: 120,
@@ -286,8 +286,11 @@ let isLoading = false;
                         'label': 'data(label)',
                         'text-outline-width': 0,
                         'text-outline-color': 'transparent',
+                        // text-max-width takes a pixel value, not the word "wrap" - passing
+                        // "wrap" makes Cytoscape log "style property is invalid" and silently
+                        // keep the default, so long labels then overflow the node.
                         'text-wrap': 'wrap',
-                        'text-max-width': 'wrap'
+                        'text-max-width': 120
                     }
                 },
                 ...Object.entries(nodeStyles).map(([type, style]) => ({

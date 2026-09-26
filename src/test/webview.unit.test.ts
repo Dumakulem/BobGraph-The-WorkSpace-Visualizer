@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import * as fs from 'fs';
+import { createRequire } from 'node:module';
 import * as path from 'path';
 import * as vm from 'vm';
 import { describe, it } from 'node:test';
@@ -7,6 +8,15 @@ import { describe, it } from 'node:test';
 import { MEDIA, readMedia } from './helpers';
 
 const SOURCE = path.join(MEDIA, 'webview.js');
+
+/**
+ * The real Cytoscape, the same 3.26.0 the webview loads from the CDN, used to check that the
+ * style sheet webview.js builds is actually valid. It ships no type declarations, so this is
+ * typed to the only surface needed here.
+ */
+const cytoscapeReal = createRequire(__filename)('cytoscape') as (options: unknown) => {
+    destroy(): void;
+};
 
 /**
  * Runs the real webview.js inside a stubbed DOM so its async state machine can be driven
@@ -470,10 +480,57 @@ describe('graph palette', () => {
         // custom property was actually read rather than the JS fallback being used.
         for (const [type, style] of byType) {
             assert.ok(
-                /^#[0-9a-f]{6}$/i.test(style.background),
-                `${type} background is "${style.background}", not a resolved hex from the palette`
+                /^#[0-9a-f]{6}$/i.test(style['background-color']),
+                `${type} background is "${style['background-color']}", not a resolved hex from the palette`
             );
         }
+    });
+
+    it('uses only style properties and value types Cytoscape accepts', async () => {
+        /*
+         * Cytoscape rejects an unknown style property, or a value of the wrong type, with a
+         * console warning and then silently keeps its default. So the failure has no exception
+         * and no test failure - it just looks like a rendering bug in the browser. That is
+         * exactly how "background" (not a Cytoscape property, it is "background-color") and
+         * "text-max-width: wrap" (a size, so it needs a number) shipped unnoticed.
+         *
+         * The style sheet is taken from the options webview.js actually passed to cytoscape,
+         * not transcribed, so this cannot drift away from the shipped styles. Validation runs
+         * against the real library - the same 3.26.0 the webview loads from the CDN.
+         */
+        const h = run({ model: workspaceWithEveryType() });
+        await settle();
+
+        const styleSheet = h.cytoscapeOptions[0]?.style;
+        assert.ok(Array.isArray(styleSheet) && styleSheet.length > 0, 'no style sheet was passed to cytoscape');
+
+        const invalid: string[] = [];
+        for (const rule of styleSheet as Array<{ selector: string; style: Record<string, unknown> }>) {
+            for (const [property, value] of Object.entries(rule.style)) {
+                const warnings: string[] = [];
+                const original = console.warn;
+                console.warn = (...args: unknown[]) => warnings.push(args.join(' '));
+                let cy: { destroy(): void } | undefined;
+                try {
+                    cy = cytoscapeReal({
+                        headless: true,
+                        styleEnabled: true,
+                        elements: [{ data: { id: 'probe', type: 'file' } }],
+                        style: [{ selector: rule.selector, style: { [property]: value } }],
+                        layout: { name: 'null' }
+                    });
+                } finally {
+                    console.warn = original;
+                    // Headless instances with styling keep timers alive; release them so the
+                    // test process can exit.
+                    cy?.destroy();
+                }
+                for (const warning of warnings) {
+                    invalid.push(`${rule.selector} { ${property}: ${JSON.stringify(value)} } -> ${warning}`);
+                }
+            }
+        }
+        assert.deepStrictEqual(invalid, [], 'Cytoscape rejected style properties:\n' + invalid.join('\n'));
     });
 
     it('keeps webview.js from re-declaring palette colours', () => {
@@ -488,10 +545,15 @@ describe('graph palette', () => {
         }
 
         const source = readMedia('webview.js');
-        // Match either a whole themeColor(...) call or a bare hex literal.
-        const backgrounds = [...source.matchAll(/background:\s*(themeColor\([^)]*\)|'#[0-9a-f]{6}')/g)]
+        // Deliberately matches background-color: and not background: - "background" is not a
+        // Cytoscape property, so if this ever matches zero the styles are wrong, not the regex.
+        const backgrounds = [...source.matchAll(/'?background-color'?:\s*(themeColor\([^)]*\)|'#[0-9a-f]{6}')/g)]
             .map((m) => m[1].trim());
         assert.ok(backgrounds.length >= 6, `expected the 6 node styles, found ${backgrounds.length}`);
+        assert.ok(
+            !/[{,]\s*'?background'?:\s*themeColor\(/.test(source),
+            'node styles use "background", which Cytoscape ignores; it must be "background-color"'
+        );
 
         for (const bg of backgrounds) {
             const themed = /^themeColor\('(--accent-[\w-]+)'\s*,\s*'(#[0-9a-f]{6})'\)$/.exec(bg);
