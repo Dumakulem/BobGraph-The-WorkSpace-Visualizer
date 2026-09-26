@@ -55,11 +55,14 @@ export function activate(context: vscode.ExtensionContext) {
             }
         );
 
+        panel.iconPath = vscode.Uri.file(path.join(context.extensionPath, 'media', 'icon.png'));
+
         const mediaPath = path.join(context.extensionPath, 'media');
 
         const styleUri = panel.webview.asWebviewUri(vscode.Uri.file(path.join(mediaPath, 'style.css')));
         const jsUri = panel.webview.asWebviewUri(vscode.Uri.file(path.join(mediaPath, 'webview.js')));
         const dataUri = panel.webview.asWebviewUri(vscode.Uri.file(path.join(mediaPath, 'workspace-graph.json')));
+        const iconUri = panel.webview.asWebviewUri(vscode.Uri.file(path.join(mediaPath, 'icon.png')));
 
         let htmlContent = fs.readFileSync(path.join(mediaPath, 'webview.html'), 'utf8');
 
@@ -68,6 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
         htmlContent = htmlContent
             .replace(/{{styleUri}}/g, styleUri.toString())
             .replace(/{{jsUri}}/g, jsUri.toString())
+            .replace(/{{iconUri}}/g, iconUri.toString())
             .replace(/\$\{webview\.cspSource\}/g, panel.webview.cspSource);
 
         // acquireVsCodeApi() may only be called once per webview, so the handle is parked

@@ -1,22 +1,20 @@
+![BOB AI Visualizer](../icon.png)
+
 # Read Pseudocode and Jump to Source
 
-Clicking any node fills the right-hand panel with three things:
+Clicking any node fills the right panel with:
 
-1. **A type badge and name** - what kind of node this is.
-2. **The file path and line** it came from.
-3. **The pseudocode** - a plain-language summary of what that block does, written by
-   IBM Bob 2.0 rather than copied from the source.
+1. **Type badge + name** — what kind of node it is, colour-matched to the graph.
+2. **File path and line** — exactly where in the codebase it lives.
+3. **Pseudocode** — a plain-language summary of what that block does, written by IBM Bob 2.0.
 
-Then press **Open in IDE** to jump straight to that file with the cursor on the right line.
-This is the fast path the extension exists for: skim the graph, read the summary, land
-exactly where you need to be.
+Press **Open in IDE** to jump straight to that file with the cursor on the correct line. That is the fast path this extension is built for: skim the graph → read the summary → land exactly where you need to be.
 
-## What is not here yet
+---
 
-The **Bob Agent** panel below the details is a placeholder, as is **Export JSON** in the
-left sidebar. Both are planned.
+## What's coming next
 
-## Where to go next
+- **Bob Agent** (right panel, below details) — ask questions about any node once the Bob 2.0 backend is connected.
+- **Export JSON** (left sidebar) — save the full graph model for use elsewhere.
 
-`ARCHITECTURE.md` in the extension folder explains the data contract and how to wire real
-Bob 2.0 output into the `{type:'loadModel'}` message the frontend already handles.
+See `ARCHITECTURE.md` in the extension folder for the data contract and how to wire real Bob 2.0 output into the `{type:'loadModel'}` message the frontend already handles.

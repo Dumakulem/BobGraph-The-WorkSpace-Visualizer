@@ -1,23 +1,21 @@
-# Welcome to BOB AI - Workspace Visualizer
+![BOB AI Visualizer](../icon.png)
 
-Reading an unfamiliar codebase means opening files one at a time and guessing how they fit
-together. This extension draws the project as a graph instead, and puts an AI-written
-pseudocode summary of whatever you click one keystroke away.
+# Welcome to BOB AI — Workspace Visualizer
+
+Reading an unfamiliar codebase usually means opening files one by one, hoping context clicks into place. This extension skips that: it draws your **entire project as an interactive graph** and puts an AI-written plain-language summary of any node one click away.
 
 ## The two views
 
-**Workspace Graph** - the whole project at a glance. One node per file, edges showing which
-files import which.
+**Workspace Graph** — the whole project at a glance. One node per file, with arrows showing which files import which.
 
-**File Flowchart** - the logic inside a single file, as Start / Decision / End steps. Click
-any file node in the workspace graph to jump into it.
+**File Flowchart** — the logic inside a single file, rendered top-to-bottom as Start → Decision → End steps. Double-click any file node to zoom in.
 
-## Getting around
+## Three-panel layout
 
 | Panel | What it holds |
 |---|---|
-| Left | Controls (model depth, refresh) |
-| Center | The graph, plus a breadcrumb when you are inside a file |
-| Right | Details for the node you clicked, and a placeholder for the Bob Agent |
+| **Left** | Refresh and export controls |
+| **Center** | The interactive graph canvas |
+| **Right** | Node details, pseudocode, and the Bob Agent placeholder |
 
-Start with the next step to open the visualizer.
+Start with the next step to open the visualizer and explore a sample workspace.

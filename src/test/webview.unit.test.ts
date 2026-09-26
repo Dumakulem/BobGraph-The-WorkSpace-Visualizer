@@ -111,7 +111,7 @@ function run(options: Options = {}): Harness {
     const lastStyle: any[] = [];
 
     const els: Record<string, StubEl> = {};
-    for (const id of ['cy', 'breadcrumb', 'breadcrumbText', 'nodeInfo', 'backBtn', 'refreshBtn']) {
+    for (const id of ['cy', 'breadcrumb', 'breadcrumbText', 'nodeInfo', 'backBtn', 'refreshBtn', 'exportBtn', 'zoomInBtn', 'zoomOutBtn', 'zoomFitBtn']) {
         els[id] = makeEl(id);
     }
 
@@ -218,7 +218,12 @@ function run(options: Options = {}): Harness {
     (domReady as unknown as () => void)();
 
     const fileNode = {
-        data: () => ({ id: 'file1', label: 'todo-app.js', type: 'file', flowchart: 'todo-app', filePath: 'src/todo-app.js', line: 1, pseudocode: 'p' })
+        data: () => ({ id: 'file1', label: 'todo-app.js', type: 'file', flowchart: 'todo-app', filePath: 'src/todo-app.js', line: 1, pseudocode: 'p' }),
+        // neighbourhood() is called by the tap handler to collect connected nodes for the
+        // details panel. Return an empty collection so the handler doesn't throw in tests.
+        neighbourhood: (_selector: string) => ({ map: () => [] }),
+        addClass: (_cls: string) => {},
+        removeClass: (_cls: string) => {}
     };
 
     return {
@@ -271,7 +276,7 @@ describe('dagre wiring', () => {
     it('lays flowcharts out with dagre', async () => {
         const h = run();
         await settle();
-        h.tap();
+        h.dbltap();
         await settle();
         assert.strictEqual(h.layoutsUsed[h.layoutsUsed.length - 1], 'dagre');
     });
@@ -302,33 +307,33 @@ describe('drill-down', () => {
         assert.ok(h.hasTapHandler(), 'initGraph did not register the node tap handler');
     });
 
-    it('fetches a flowchart on the first tap', async () => {
+    it('fetches a flowchart on double-click', async () => {
         const h = run();
         await settle();
         const before = h.fetches.length;
-        h.tap();
+        h.dbltap();
         await settle();
-        assert.ok(h.fetches.length > before, 'first tap did not fetch');
+        assert.ok(h.fetches.length > before, 'double-click did not fetch a flowchart');
     });
 
     it('shows the breadcrumb on success', async () => {
         const h = run();
         await settle();
-        h.tap();
+        h.dbltap();
         await settle();
         assert.strictEqual(h.els.breadcrumb.style.display, 'flex');
         assert.strictEqual(h.els.breadcrumbText.innerText, 'Workspace > todo-app.js');
     });
 
-    it('commits the view state exactly once, so later taps are ignored', async () => {
+    it('commits the view state exactly once, so later double-clicks are ignored', async () => {
         const h = run();
         await settle();
-        h.tap();
+        h.dbltap();
         await settle();
         const after = h.fetches.length;
-        h.tap();
+        h.dbltap();
         await settle();
-        assert.strictEqual(h.fetches.length, after, 'a second tap re-drilled into the same file');
+        assert.strictEqual(h.fetches.length, after, 'a second double-click re-drilled into the same file');
     });
 
     it('stays usable and retryable when the flowchart fetch fails', async () => {
@@ -336,20 +341,20 @@ describe('drill-down', () => {
         // left the view stuck on "flowchart" and every later click was silently dropped.
         const h = run({ flowchartFails: true });
         await settle();
-        h.tap();
+        h.dbltap();
         await settle();
         assert.strictEqual(h.els.breadcrumb.style.display, 'none', 'breadcrumb left visible after failure');
 
         const afterFirst = h.fetches.length;
-        h.tap();
+        h.dbltap();
         await settle();
-        assert.ok(h.fetches.length > afterFirst, 'a retry tap was swallowed - the view state wedged');
+        assert.ok(h.fetches.length > afterFirst, 'a retry double-click was swallowed - the view state wedged');
     });
 
     it('offers a Retry control after a failed load', async () => {
         const h = run({ flowchartFails: true });
         await settle();
-        h.tap();
+        h.dbltap();
         await settle();
         const hasRetry = h.els.nodeInfo.children.some((c) => c.className.includes('error-retry'));
         assert.ok(hasRetry, 'a failed load left the user with no way to retry');
@@ -371,7 +376,7 @@ describe('refresh', () => {
     it('reloads the current flowchart, not the workspace', async () => {
         const h = run();
         await settle();
-        h.tap();
+        h.dbltap();
         await settle();
         const before = h.fetches.length;
         h.fire('refreshBtn');
@@ -383,7 +388,7 @@ describe('refresh', () => {
     it('back returns to the workspace graph', async () => {
         const h = run();
         await settle();
-        h.tap();
+        h.dbltap();
         await settle();
         h.fire('backBtn');
         await settle();
@@ -395,14 +400,15 @@ describe('refresh', () => {
 });
 
 describe('opening a flowchart', () => {
-    it('opens on a single click of a file node', async () => {
+    it('does NOT open on a single click — single click shows details only', async () => {
+        // Requirement: single click shows description + connections in the panel, never drills.
         const h = run();
         await settle();
         h.tap();
         await settle();
         assert.ok(
-            h.fetches.some((u) => String(u).includes('flowcharts/todo-app.json')),
-            `no flowchart fetch; saw ${JSON.stringify(h.fetches)}`
+            !h.fetches.some((u) => String(u).includes('flowcharts/')),
+            `single click must not fetch a flowchart; saw ${JSON.stringify(h.fetches)}`
         );
     });
 
@@ -420,10 +426,12 @@ describe('opening a flowchart', () => {
     });
 
     it('fetches the flowchart only once when a double click fires both events', async () => {
+        // Cytoscape fires dbltap AND tap on a physical double click. The tap handler must
+        // not trigger an additional flowchart fetch after the dbltap already started one.
         const h = run();
         await settle();
         h.dbltap();
-        h.tap();
+        h.tap();   // fires synchronously alongside dbltap; tap must not re-fetch
         await settle();
         const flowFetches = h.fetches.filter((u) => String(u).includes('flowcharts/'));
         assert.strictEqual(

@@ -28,12 +28,14 @@
       {
         "command": "bobai-visualizer.openVisualizer",
         "title": "Open Workspace Visualizer",
-        "category": "BOB AI"
+        "category": "BOB AI",
+        "icon": "media/icon.png"
       },
       {
         "command": "bobai-visualizer.showGettingStarted",
         "title": "Show Getting Started",
-        "category": "BOB AI"
+        "category": "BOB AI",
+        "icon": "media/icon.png"
       }
     ],
     "walkthroughs": [
@@ -41,6 +43,7 @@
         "id": "bobaiVisualizer.gettingStarted",
         "title": "Get Started with BOB AI Visualizer",
         "description": "Turn a codebase into an interactive graph and read AI pseudocode on click.",
+        "icon": "media/icon.png",
         "featuredFor": [
           "**"
         ],

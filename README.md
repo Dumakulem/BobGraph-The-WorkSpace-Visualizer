@@ -12,116 +12,51 @@ Two views:
 
 IBM Bob 2.0 hackathon project, Onboarding category.
 
-## Running it
+## 🚀 Quick Start (For Team Members)
 
-### For development
+If you are pulling this branch to test the frontend or start backend integration, follow these steps:
 
+### 1. Environment Setup
 ```bash
 npm install
 npm run compile
 ```
 
-Press <kbd>F5</kbd> to launch an Extension Development Host, then run
-**BOB AI: Open Workspace Visualizer** from the Command Palette (<kbd>Ctrl+Shift+P</kbd>).
+### 2. Launching the Visualizer
+1. Press <kbd>F5</kbd> in VS Code to open the **Extension Development Host**.
+2. In the new window, press <kbd>Ctrl+Shift+P</kbd> to open the Command Palette.
+3. Type and run: **`BOB AI: Open Workspace Visualizer`**.
 
-F5 is only the dev loop - it is not how end users start the extension.
+---
 
-### For users
+## 🛠️ Development Details
 
-After installing the packaged `.vsix`, the extension contributes:
+### Core Workflow
+- **Dev Loop:** Edit code $\rightarrow$ `npm run compile` (or `npm run watch`) $\rightarrow$ Reload Development Host.
+- **Testing:** Run `npm test` for a fast unit suite that verifies the graph logic and data sanitization.
+- **Packaging:** Use `npx @vscode/vsce package` to create a `.vsix` installable file.
 
-| Entry point | What it does |
-|---|---|
-| **Welcome page** | Shown on first run (`welcomePage.showOnStartup: "Walkthrough"`) |
-| **Walkthrough** | 5-step "Get Started" guide in Help > Welcome, under Getting Started |
-| **Command** | `BOB AI: Open Workspace Visualizer` (<kbd>Ctrl+Shift+P</kbd>) |
-
-There is no activation event to worry about - VS Code activates the extension the first time
-its command is run. The walkthrough's second step links straight to that command, and marks
-itself complete once you run it.
-
-To try the packaging path:
-
-```bash
-npx @vscode/vsce package     # -> bobai-visualizer-0.0.1.vsix
-```
-
-`publisher` in `package.json` is set to `bob-ai-team` as a placeholder - change it to a name
-your team owns before publishing, since it becomes part of the public extension ID
-(`<publisher>.bobai-visualizer`). `vsce` also warns about a missing `license`, `icon`, and
-`repository`; those are cosmetic and will not block packaging.
-
-Other scripts:
-
-```bash
-npm run watch    # recompile on change
-npm run lint     # eslint
-npm run pretest  # compile + lint
-npm test         # fast unit suite (Node's built-in runner, no VS Code needed)
-```
-
-`npm test` covers the manifest wiring, the shipped JSON and CSP, and the real behaviour of
-`media/webview.js` driven through a stubbed DOM - including the drill-down state machine and
-the dagre wiring. It finishes in well under a second and needs no downloads.
-
-Activation and command registration need a real VS Code instance, so they live in a separate
-host suite:
-
-```bash
-npm run test:integration   # downloads VS Code on first run
-```
-
-See `ARCHITECTURE.md` section 13 for what each file covers.
-
-Walkthrough copy lives in `media/walkthrough/*.md` and is referenced from `package.json`.
-Editing a step means editing the matching markdown file - no rebuild needed.
-
-## Project layout
-
+### Project Layout
 ```
 bobai-visualizer/
 ├── src/
 │   ├── extension.ts              Extension host: creates the panel, injects asset URIs
-│   └── test/
-│       ├── helpers.ts            Shared paths and file readers
-│       ├── manifest.unit.test.ts Command + walkthrough + theming + packaging rules
-│       ├── data.unit.test.ts     JSON, slug resolution, CSP, script order, dead controls
-│       ├── webview.unit.test.ts  Runs the real webview.js in a stubbed DOM
-│       └── extension.host.test.ts  Activation, needs a real VS Code instance
+│   └── test/                    Unit and integration test suites
 └── media/                        Everything the webview can load
     ├── webview.html              Panel markup + CSP + CDN script tags
     ├── webview.js                All frontend logic (no framework)
     ├── style.css                 VS Code-themed styling, CSS variables
-    ├── workspace-graph.json      Workspace view data
-    ├── walkthrough/              Onboarding steps, one markdown file per step
-    └── flowcharts/
-        ├── todo-app.json         Flowchart data, one file per JSON
-        └── storage-util.json
+    ├── workspace-graph.json      Workspace view data (THE CONTRACT)
+    ├── walkthrough/              Onboarding steps (markdown)
+    └── flowcharts/               Flowchart data (one JSON per file)
 ```
 
-`../BobGraph-The-WorkSpace-Visualizer/` is an older standalone copy of the same UI for
-opening `webview.html` directly in a browser. It is **not** shipped in the extension and has
-drifted behind `media/` — treat `media/` as the source of truth.
+## 📖 Documentation
+If you are integrating the Bob 2.0 backend, read these in order:
 
-## Documentation
+1. **`HANDOFF.md`** $\rightarrow$ **Start here.** Contains the exact JSON contract and the three ways to feed real data into the frontend.
+2. **`ARCHITECTURE.md`** $\rightarrow$ Explains the webview sandbox, the URI injection scheme, and the message flow.
 
-Documentation:
-
-**`HANDOFF.md`** - what the backend team needs: the exact JSON contract, the three ways to
-feed real Bob 2.0 data in, error behaviour you can rely on, and prioritised open work.
-Start there if you are taking over the integration.
-
-**`ARCHITECTURE.md`** (in this folder) explains how the extension actually works: the webview
-sandbox, the URI injection scheme, the JSON data contract, and the message flow. Start there
-if you are new to the codebase or integrating the Bob 2.0 backend.
-
-> The reference to it is plain text rather than a relative link on purpose: `vsce package`
-> refuses to build while a README contains relative links and no `repository` is set. Once you
-> add a `repository` to `package.json`, turn the line above into a normal relative markdown
-> link so it becomes clickable.
-
-## Rules for this repo
-
-- Do not run `git commit` or `git push`. Commits are the team lead's job.
-- `media/` is the only directory the webview may read from. Adding an asset elsewhere
-  requires updating `localResourceRoots` in `src/extension.ts`.
+## 📏 Rules for this Repo
+- **Asset Location:** All frontend assets must live in `media/`. Adding files elsewhere requires updating `localResourceRoots` in `src/extension.ts`.
+- **Data Contract:** Do not change the field names in `workspace-graph.json` without coordinating with the backend team.

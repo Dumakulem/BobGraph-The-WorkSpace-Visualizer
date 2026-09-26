@@ -6,27 +6,74 @@
       "name": "Start",
       "filePath": "src/utils/storage-util.js",
       "line": 1,
-      "pseudocode": "Entry point of the utility."
+      "pseudocode": "Entry point of the storage utility module. Exports saveToDisk and loadFromDisk."
     },
     {
-      "id": "save_disk",
-      "type": "function",
-      "name": "saveToDisk()",
+      "id": "prop_storage_key",
+      "type": "property",
+      "name": "STORAGE_KEY: string",
       "filePath": "src/utils/storage-util.js",
-      "line": 5,
-      "pseudocode": "Saves data to localStorage."
+      "line": 3,
+      "pseudocode": "Module-level constant. Value: 'bob_todos'. Used as the localStorage key by both saveToDisk and loadFromDisk."
+    },
+    {
+      "id": "func_save",
+      "type": "function",
+      "name": "saveToDisk(data)",
+      "filePath": "src/utils/storage-util.js",
+      "line": 6,
+      "pseudocode": "Accepts any serializable object. Calls JSON.stringify(data) and writes the result to localStorage under the STORAGE_KEY. Does not return a value."
+    },
+    {
+      "id": "decision_stringify",
+      "type": "decision",
+      "name": "Serialize\nOK?",
+      "filePath": "src/utils/storage-util.js",
+      "line": 8,
+      "pseudocode": "JSON.stringify can throw if the object contains circular references. If it throws, the error is caught and logged; localStorage is not written."
+    },
+    {
+      "id": "func_load",
+      "type": "function",
+      "name": "loadFromDisk()",
+      "filePath": "src/utils/storage-util.js",
+      "line": 18,
+      "pseudocode": "Reads the raw string from localStorage using STORAGE_KEY. If the key is absent, returns an empty array. Otherwise calls JSON.parse() and returns the result."
+    },
+    {
+      "id": "decision_parse",
+      "type": "decision",
+      "name": "Parse\nOK?",
+      "filePath": "src/utils/storage-util.js",
+      "line": 21,
+      "pseudocode": "JSON.parse throws on malformed strings. If parsing fails the error is caught, the corrupt entry is removed from localStorage, and an empty array is returned."
+    },
+    {
+      "id": "func_clear",
+      "type": "function",
+      "name": "clearStorage()",
+      "filePath": "src/utils/storage-util.js",
+      "line": 30,
+      "pseudocode": "Removes the STORAGE_KEY entry from localStorage entirely. Used for testing and the 'Clear All' UI action."
     },
     {
       "id": "end",
       "type": "start_end",
       "name": "End",
       "filePath": "src/utils/storage-util.js",
-      "line": 10,
-      "pseudocode": "Saving complete."
+      "line": 35,
+      "pseudocode": "Module fully exported. saveToDisk, loadFromDisk, and clearStorage are available to importers."
     }
   ],
   "edges": [
-    { "source": "start", "target": "save_disk", "relation": "flow" },
-    { "source": "save_disk", "target": "end", "relation": "flow" }
+    { "source": "start",            "target": "prop_storage_key",  "relation": "contains" },
+    { "source": "start",            "target": "func_save",          "relation": "flow" },
+    { "source": "start",            "target": "func_load",          "relation": "flow" },
+    { "source": "start",            "target": "func_clear",         "relation": "flow" },
+    { "source": "func_save",        "target": "decision_stringify", "relation": "flow" },
+    { "source": "func_load",        "target": "decision_parse",     "relation": "flow" },
+    { "source": "decision_stringify","target": "end",               "relation": "flow" },
+    { "source": "decision_parse",   "target": "end",                "relation": "flow" },
+    { "source": "func_clear",       "target": "end",                "relation": "flow" }
   ]
 }

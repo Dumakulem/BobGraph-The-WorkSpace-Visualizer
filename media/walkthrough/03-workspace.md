@@ -1,18 +1,21 @@
+![BOB AI Visualizer](../icon.png)
+
 # Read the Workspace Graph
 
-Every rectangle in the center panel is a file. The arrows between them are relationships:
+Every shape in the canvas is a code element, colour-coded by type:
 
-| Edge | Meaning |
+| Colour | Node type |
 |---|---|
-| `imports` | This file pulls in that file |
-| `contains` | A class or function belongs to that file |
-| `calls` | That function calls this one |
+| 🔵 Blue rectangle | File |
+| 🟣 Purple rounded box | Class |
+| 🩵 Sky ellipse | Method |
+| 🟢 Green ellipse | Function |
+| 🔴 Red diamond | Decision |
+| 🩵 Cyan pill | Start / End |
 
-Nodes are colour-coded by kind - files are grey, classes blue, methods indigo, functions
-green. A red diamond is a decision point and a gold pill is the start or end of a flow, both
-of which only appear once you are inside a file.
+Arrows between nodes show relationships — `imports`, `contains`, and `calls`.
 
-**Hover** a node to highlight its edges. **Click** one to load its details into the right
-panel, and - if it is a file - to drill into its flowchart.
+**Hover** any node to dim everything else and highlight its direct connections.
+**Click** a node to load its details and pseudocode into the right panel.
 
-Press **Refresh Graph** in the left panel to re-run the layout if nodes end up overlapping.
+Press **Refresh Graph** in the left sidebar at any time to re-run the layout.

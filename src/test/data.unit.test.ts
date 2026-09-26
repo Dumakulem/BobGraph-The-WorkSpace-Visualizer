@@ -126,7 +126,7 @@ describe('webview markup', () => {
         // A visible button that does nothing reads as a bug. Controls whose backend does
         // not exist yet must carry the disabled attribute.
         const wired = new Set(
-            [...js.matchAll(/getElementById\('([A-Za-z]+)'\)\.addEventListener/g)].map((m) => m[1])
+            [...js.matchAll(/getElementById\('([A-Za-z]+)'\)\??\.addEventListener/g)].map((m) => m[1])
         );
         const buttons = [...html.matchAll(/<button[^>]*id="([A-Za-z]+)"[\s\S]*?>/g)];
         assert.ok(buttons.length > 0, 'no buttons found');
