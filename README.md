@@ -1,4 +1,4 @@
-# BOB AI - Workspace Visualizer
+# BobGraph - Workspace Visualizer
 
 A VS Code extension that renders a codebase as an interactive graph, with AI-generated
 pseudocode on click for fast onboarding.
@@ -25,7 +25,7 @@ npm run compile
 ### 2. Launching the Visualizer
 1. Press <kbd>F5</kbd> in VS Code to open the **Extension Development Host**.
 2. In the new window, press <kbd>Ctrl+Shift+P</kbd> to open the Command Palette.
-3. Type and run: **`BOB AI: Open Workspace Visualizer`**.
+3. Type and run: **`BobGraph: Open Workspace Visualizer`**.
 
 ---
 

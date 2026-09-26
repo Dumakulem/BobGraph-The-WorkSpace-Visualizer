@@ -206,17 +206,18 @@ async function selectModel(): Promise<vscode.LanguageModelChat> {
 }
 
 async function selectAvailableModels(): Promise<vscode.LanguageModelChat[]> {
-	if (availableModels) {
+	if (availableModels && availableModels.length > 0) {
 		return availableModels;
 	}
-	// Copilot requires the vendor selector for extensions using the Language Model API.
-	// Calling it from a user action also gives VS Code a chance to show its consent prompt.
-	const copilotModels = await vscode.lm.selectChatModels({ vendor: 'copilot' });
-	availableModels = copilotModels.length > 0
-		? copilotModels
-		// Keep support for IBM Bob and other providers that register directly with VS Code.
-		: await vscode.lm.selectChatModels();
-	return availableModels;
+	// Query all registered providers so IBM Bob models are not excluded by a
+	// Copilot-specific vendor filter.
+	const allModels = await vscode.lm.selectChatModels();
+	// A provider may still be starting when the first request is made. Do not
+	// cache an empty result; the next user action should retry discovery.
+	if (allModels.length > 0) {
+		availableModels = allModels;
+	}
+	return allModels;
 }
 
 let availableModels: vscode.LanguageModelChat[] | undefined;

@@ -1,6 +1,6 @@
 # Architecture
 
-How the BOB AI Workspace Visualizer actually works, and why it is built this way.
+How the BobGraph Workspace Visualizer actually works, and why it is built this way.
 
 ---
 
@@ -229,7 +229,7 @@ request cannot freeze navigation permanently.
 ## 8. Entry points and onboarding
 
 The extension registers exactly one command, `bobai-visualizer.openVisualizer`, shown in the
-palette as **BOB AI: Open Workspace Visualizer**. `package.json` declares
+palette as **BobGraph: Open Workspace Visualizer**. `package.json` declares
 `activationEvents: []` deliberately: since VS Code 1.74 a contributed command activates its
 extension on demand, so no explicit activation event is needed.
 

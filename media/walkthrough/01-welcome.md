@@ -1,6 +1,6 @@
-![BOB AI Visualizer](../icon.png)
+![BobGraph](../icon.png)
 
-# Welcome to BOB AI — Workspace Visualizer
+# Welcome to BobGraph — Workspace Visualizer
 
 Reading an unfamiliar codebase usually means opening files one by one, hoping context clicks into place. This extension skips that: it draws your **entire project as an interactive graph** and puts an AI-written plain-language summary of any node one click away.
 

@@ -1,4 +1,4 @@
-![BOB AI Visualizer](../icon.png)
+![BobGraph](../icon.png)
 
 # Read the Workspace Graph
 

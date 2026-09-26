@@ -1,4 +1,4 @@
-![BOB AI Visualizer](../icon.png)
+![BobGraph](../icon.png)
 
 # Read Pseudocode and Jump to Source
 

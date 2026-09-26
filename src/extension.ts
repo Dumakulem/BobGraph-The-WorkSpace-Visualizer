@@ -76,7 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
         void context.globalState.update(INTRO_SEEN, true);
         void vscode.window
             .showInformationMessage(
-                'Welcome to BOB AI - Workspace Visualizer. Take the 2-minute tour?',
+                'Welcome to BobGraph - Workspace Visualizer. Take the 2-minute tour?',
                 'Start Tour',
                 'Not Now'
             )
@@ -93,7 +93,7 @@ export function activate(context: vscode.ExtensionContext) {
             // relative paths. asWebviewUri is the only way to reference a local asset.
             const panel = vscode.window.createWebviewPanel(
                 'bobVisualizer',
-                'BOB AI - Workspace Visualizer',
+                'BobGraph - Workspace Visualizer',
                 vscode.ViewColumn.One,
                 {
                     enableScripts: true,
@@ -180,10 +180,10 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('bobai-visualizer.checkAiConnection', async () => {
             try {
                 const models = await checkActiveLanguageModel();
-                void vscode.window.showInformationMessage(`BOB AI model connection is available: ${models}`);
+                void vscode.window.showInformationMessage(`BobGraph language model connection is available: ${models}`);
             } catch (error) {
                 void vscode.window.showErrorMessage(
-                    `BOB AI model connection is unavailable: ${error instanceof Error ? error.message : String(error)}`
+                    `BobGraph language model connection is unavailable: ${error instanceof Error ? error.message : String(error)}`
                 );
             }
         })
@@ -408,7 +408,7 @@ export async function executeGenerateWorkspaceGraph(
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) {
         void vscode.window.showErrorMessage(
-            'BOB AI: Cannot generate workspace graph — no workspace folder is open.'
+            'BobGraph: Cannot generate workspace graph — no workspace folder is open.'
         );
         return;
     }
@@ -418,7 +418,7 @@ export async function executeGenerateWorkspaceGraph(
         provider = getGraphProvider();
     } catch (err) {
         void vscode.window.showErrorMessage(
-            `BOB AI: No graph provider is available. ${err instanceof Error ? err.message : String(err)}`
+            `BobGraph: No graph provider is available. ${err instanceof Error ? err.message : String(err)}`
         );
         return;
     }
@@ -431,7 +431,7 @@ export async function executeGenerateWorkspaceGraph(
         );
     } catch (err) {
         void vscode.window.showErrorMessage(
-            `BOB AI: Graph generation failed. ${err instanceof Error ? err.message : String(err)}`
+            `BobGraph: Graph generation failed. ${err instanceof Error ? err.message : String(err)}`
         );
         return;
     }
@@ -443,11 +443,11 @@ export async function executeGenerateWorkspaceGraph(
     } catch (err) {
         if (err instanceof GraphValidationError) {
             void vscode.window.showErrorMessage(
-                `BOB AI: The generated graph is invalid and was not saved. ${err.message}`
+                `BobGraph: The generated graph is invalid and was not saved. ${err.message}`
             );
         } else {
             void vscode.window.showErrorMessage(
-                `BOB AI: Failed to save the workspace graph. ${err instanceof Error ? err.message : String(err)}`
+                `BobGraph: Failed to save the workspace graph. ${err instanceof Error ? err.message : String(err)}`
             );
         }
         return;
@@ -461,7 +461,7 @@ export async function executeGenerateWorkspaceGraph(
     }
 
     void vscode.window.showInformationMessage(
-        'BOB AI: Workspace graph generated successfully.'
+        'BobGraph: Workspace graph generated successfully.'
     );
 }
 
