@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { GraphPanel } from './panel/graphPanel';
+import { runBobGraphGeneration } from './bob/bobAdapter';
+import { ensureGraphDir, graphFilePath } from './bob/graphStore';
 
 /**
  * Extension host. Owns the webview panel, asset URI injection, and file-opening requests.
@@ -13,6 +16,31 @@ import * as fs from 'fs';
  * - MOCK_DATA_URI is injected as a JSON-encoded string so the webview can fetch sample data.
  */
 export function activate(context: vscode.ExtensionContext) {
+ // ── BobGraph: LM-powered graph panel ────────────────────────────────────────
+ // Register the bobgraph.* commands consumed by GraphPanel and the test suite.
+ // These live alongside the existing bobai-visualizer.* commands and share the
+ // same extension context.
+ GraphPanel.setExtensionUri(context.extensionUri);
+
+ context.subscriptions.push(
+  vscode.commands.registerCommand('bobgraph.openVisualizer', () => {
+   GraphPanel.createOrShow(context.extensionUri);
+  }),
+ );
+
+ context.subscriptions.push(
+  vscode.commands.registerCommand('bobgraph.refresh', () => {
+   void GraphPanel.refresh();
+  }),
+ );
+
+ context.subscriptions.push(
+  vscode.commands.registerCommand('bobgraph.generateGraph', () => {
+   void runGenerateGraph();
+  }),
+ );
+
+ // ── BOB AI Visualizer (existing feature set) ─────────────────────────────
     const WALKTHROUGH_ID = 'bobaiVisualizer.gettingStarted';
 
     const showGettingStarted = () =>
@@ -114,6 +142,43 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(disposable);
+}
+
+// ─── BobGraph: graph generation helper ───────────────────────────────────────
+
+async function runGenerateGraph(): Promise<void> {
+ const folders = vscode.workspace.workspaceFolders;
+ if (!folders || folders.length === 0) {
+  void vscode.window.showErrorMessage(
+   'BobGraph: No workspace folder is open. Open a folder first.',
+  );
+  return;
+ }
+ const workspaceRoot = folders[0].uri.fsPath;
+
+ await vscode.window.withProgress(
+  {
+   location: vscode.ProgressLocation.Notification,
+   title: 'BobGraph: Generating workspace graph with Bob…',
+   cancellable: false,
+  },
+  async () => {
+   try {
+    await ensureGraphDir(workspaceRoot);
+    const outFile = graphFilePath(workspaceRoot);
+    await runBobGraphGeneration(workspaceRoot);
+    const action = await vscode.window.showInformationMessage(
+    	`Workspace graph written to ${outFile}`,
+    	'Open Visualizer',
+    );
+    if (action === 'Open Visualizer') {
+    	GraphPanel.createOrShow();
+    }
+   } catch (error) {
+    void vscode.window.showErrorMessage(`BobGraph: ${String(error)}`);
+   }
+  },
+ );
 }
 
 export function deactivate() {}

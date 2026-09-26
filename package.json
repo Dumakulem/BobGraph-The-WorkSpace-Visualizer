@@ -36,6 +36,21 @@
         "title": "Show Getting Started",
         "category": "BOB AI",
         "icon": "media/icon.png"
+      },
+      {
+        "command": "bobgraph.openVisualizer",
+        "title": "BobGraph: Open Workspace Visualizer",
+        "category": "BobGraph"
+      },
+      {
+        "command": "bobgraph.generateGraph",
+        "title": "BobGraph: Generate Workspace Graph",
+        "category": "BobGraph"
+      },
+      {
+        "command": "bobgraph.refresh",
+        "title": "BobGraph: Refresh Graph",
+        "category": "BobGraph"
       }
     ],
     "walkthroughs": [
