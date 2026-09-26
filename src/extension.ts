@@ -7,16 +7,40 @@ import * as fs from 'fs';
  * See ARCHITECTURE.md for the full picture.
  */
 export function activate(context: vscode.ExtensionContext) {
-    // showOnStartup only fires on a real first install, which never happens for an
-    // extension loaded via F5. This gives the walkthrough a permanent palette entry.
+    const WALKTHROUGH_ID = 'bobaiVisualizer.gettingStarted';
+
+    const showGettingStarted = () =>
+        vscode.commands.executeCommand('workbench.action.openWalkthrough', [
+            context.extension.id,
+            WALKTHROUGH_ID
+        ]);
+
+    // This palette entry is the only guaranteed way to reopen the walkthrough. VS Code's own
+    // auto-open is not usable here: `showOnStartup` is not a walkthrough property at all
+    // (verified against the 1.139 manifest schema), and the native auto-open slot is shared
+    // with every other extension, so IBM Bob can and does claim it first.
     context.subscriptions.push(
-        vscode.commands.registerCommand('bobai-visualizer.showGettingStarted', () =>
-            vscode.commands.executeCommand('workbench.action.openWalkthrough', [
-                context.extension.id,
-                'bobaiVisualizer.gettingStarted'
-            ])
-        )
+        vscode.commands.registerCommand('bobai-visualizer.showGettingStarted', showGettingStarted)
     );
+
+    // One-time intro, owned by us rather than by the Welcome page. Fires on the first
+    // activation after install and then never again - a Welcome-page popup competes with
+    // every other extension and is not dismissable-per-extension.
+    const INTRO_SEEN = 'bobaiVisualizer.introSeen';
+    if (!context.globalState.get(INTRO_SEEN)) {
+        void context.globalState.update(INTRO_SEEN, true);
+        void vscode.window
+            .showInformationMessage(
+                'Welcome to BOB AI - Workspace Visualizer. Take the 2-minute tour?',
+                'Start Tour',
+                'Not Now'
+            )
+            .then(choice => {
+                if (choice === 'Start Tour') {
+                    void showGettingStarted();
+                }
+            });
+    }
 
     const disposable = vscode.commands.registerCommand('bobai-visualizer.openVisualizer', () => {
         // Sandbox: the webview may only read files under media/, and never via file:// or

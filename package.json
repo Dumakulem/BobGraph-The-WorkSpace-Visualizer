@@ -41,6 +41,9 @@
         "id": "bobaiVisualizer.gettingStarted",
         "title": "Get Started with BOB AI Visualizer",
         "description": "Turn a codebase into an interactive graph and read AI pseudocode on click.",
+        "featuredFor": [
+          "**"
+        ],
         "steps": [
           {
             "id": "welcome",

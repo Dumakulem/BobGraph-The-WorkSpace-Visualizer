@@ -248,11 +248,45 @@ Two linking mechanisms tie them together:
 - `completionEvents: ["onCommand:bobai-visualizer.openVisualizer"]` marks a step done once
   the user actually runs the command, instead of when they merely click through it.
 
-**`showOnStartup` does not fire while you develop.** It triggers on the first *install* of
-the extension, and an extension loaded through `F5` is not installed - VS Code does not
-track dev-host extensions. It is also shown only once, so dismissing it is permanent. That
-is why `bobai-visualizer.showGettingStarted` exists: it calls `workbench.action.openWalkthrough`
-against `context.extension.id` so the walkthrough is always one palette entry away.
+### How the intro actually gets shown
+
+Getting the walkthrough in front of a first-time user is more constrained than the docs
+suggest. Checked against the real VS Code 1.139 manifest schema in
+`workbench.desktop.main.js`, the `contributes.walkthroughs` item properties are exactly:
+
+    id, title, icon, description, featuredFor, when, steps
+
+**There is no `showOnStartup` property on a walkthrough.** It only exists on
+`contributes.welcomePage`. Adding it to a walkthrough is silently ignored - the schema
+tolerates unknown properties without warning. So the two are different things:
+
+- `welcomePage.showOnStartup: "Walkthrough"` opens the generic **Welcome page** on first
+  install, which *lists* our walkthrough among everyone else's. This is the "typical IBM
+  BOB AI" experience: you are inside a shared page, not your own intro.
+- Native **auto-open of our walkthrough itself** is gated on `featuredFor`, which is a list
+  of glob patterns matched against workspace folder URIs. A match marks it "featured", and
+  the featured walkthrough is the one opened automatically. It additionally requires the
+  user setting `workbench.welcomePage.walkthroughs.openOnInstall` (default `true`).
+
+Two consequences:
+
+1. We set `featuredFor: ["**"]` to claim the slot for any workspace - but **the slot is
+   shared**. If IBM Bob sets the same value and registered first, it wins. Do not rely on
+   this.
+2. It only fires on a real *install*; an extension loaded through `F5` is not installed and
+   is never tracked. It is also shown once, so dismissal is permanent.
+
+So the intro is covered three ways, in descending order of reliability:
+
+| Mechanism | Reliability |
+| --- | --- |
+| First-run `showInformationMessage` in `activate()`, gated on a `globalState` flag | **Ours. Always works, including F5, and only for us** |
+| `bobai-visualizer.showGettingStarted` palette command | Always works |
+| `featuredFor: ["**"]` | Best effort; may lose to another extension |
+
+The `showInformationMessage` in `activate()` is the only one we fully own, which is why the
+onboarding is a real prompt rather than a Welcome-page popup. If you see the intro twice,
+check that `globalState` key `bobaiVisualizer.introSeen` is being persisted.
 
 **Renaming a command means changing it in two places** - `contributes.commands[].command`
 and the `registerCommand` string in `src/extension.ts`. They must match exactly or the

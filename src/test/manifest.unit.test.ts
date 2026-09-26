@@ -43,6 +43,30 @@ describe('package manifest', () => {
         assert.ok(found, `license "${pkg.license}" declared but no LICENSE file found`);
     });
 
+    it('competes for the native auto-open slot via featuredFor', () => {
+        // There is no `showOnStartup` on a walkthrough in the real manifest schema
+        // (checked against VS Code 1.139: id, title, icon, description, featuredFor,
+        // when, steps). Native auto-open is gated on featuredFor matching workspace
+        // folder globs, plus the user setting workbench.welcomePage.walkthroughs.openOnInstall.
+        const wt = pkg.contributes.walkthroughs[0];
+        assert.ok(
+            !('showOnStartup' in wt),
+            'showOnStartup is not a walkthrough property; it would be silently ignored'
+        );
+        assert.ok(
+            Array.isArray(wt.featuredFor) && wt.featuredFor.includes('**'),
+            'featuredFor is the only manifest lever on native auto-open'
+        );
+    });
+
+    it('opens the Welcome page on install so the walkthrough is discoverable', () => {
+        assert.strictEqual(
+            pkg.contributes.welcomePage?.showOnStartup,
+            'Walkthrough',
+            'without this the walkthrough is only reachable from the palette'
+        );
+    });
+
     it('points its icon at a file that exists', () => {
         assert.ok(pkg.icon, 'no icon - the walkthrough and extension list show a generic glyph');
         assert.ok(exists(pkg.icon), `icon file missing: ${pkg.icon}`);
