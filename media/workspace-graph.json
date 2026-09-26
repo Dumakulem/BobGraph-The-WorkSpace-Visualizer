@@ -1,0 +1,29 @@
+{
+  "nodes": [
+    {
+      "id": "file1",
+      "type": "file",
+      "name": "todo-app.js",
+      "filePath": "src/todo-app.js",
+      "line": 1,
+      "pseudocode": "Main application logic. Coordinates UI and data management.",
+      "flowchart": "todo-app"
+    },
+    {
+      "id": "file2",
+      "type": "file",
+      "name": "storage-util.js",
+      "filePath": "src/utils/storage-util.js",
+      "line": 1,
+      "pseudocode": "Utility for localStorage operations.",
+      "flowchart": "storage-util"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file1",
+      "target": "file2",
+      "relation": "imports"
+    }
+  ]
+}

@@ -1,0 +1,602 @@
+/*
+ * Theme colours come from the host via the variables VS Code injects into every
+ * webview. The hex fallbacks only apply when this file is opened directly in a
+ * browser (the standalone prototype), so they are dark on purpose.
+ * Do not redefine --vscode-* vars in :root – that shadows the host theme.
+ *
+ * --accent-* / --bg-* are the graph palette and the single source of truth.
+ * webview.js reads these via themeColor() rather than repeating the hex,
+ * because Cytoscape paints to a canvas and cannot resolve custom properties.
+ * Add a node colour here, not in webview.js.
+ */
+
+:root {
+    /* ── Accent palette (these are the SINGLE SOURCE OF TRUTH for graph node colours;
+       webview.js reads them via themeColor() since Cytoscape paints to canvas and
+       cannot resolve CSS custom properties itself) ── */
+    --accent-blue:         #007acc;
+    --accent-indigo:       #5865f2;
+    --accent-slate:        #64748b;
+    --accent-green:        #4ade80;
+    --accent-gold:         #d4af37;
+    --accent-red:          #e14b4b;
+    /* ── Rich dark-palette node backgrounds ── */
+    --accent-file-bg:      #1e3a5f;
+    --accent-class-bg:     #1e1b4b;
+    --accent-method-bg:    #1a3040;
+    --accent-function-bg:  #14532d;
+    --accent-start-bg:     #0c4a6e;
+    --accent-decision-bg:  #450a0a;
+    --accent-property-bg:  #1c2a1c;
+
+    /* ── Graph canvas dark palette (fallback for browser prototype) ── */
+    --bg-deep:        #0d1117;
+    --bg-canvas:      #080c12;
+    --bg-sidebar:     #0f1520;
+    --bg-panel:       #141924;
+    --bg-card:        #161d2e;
+    --bg-card-hover:  #1c2540;
+    --border:         #1e2d45;
+    --border-glow:    #1b6fc7;
+    --border-subtle:  #162036;
+
+    --text-primary:   #e6edf3;
+    --text-secondary: #8b949e;
+    --text-muted:     #4d5666;
+
+    --cyan:           #00d4ff;
+    --cyan-dim:       #0ea5c9;
+    --cyan-glow:      rgba(0, 212, 255, 0.15);
+    --blue:           #1d6fd8;
+    --blue-bright:    #2d88ff;
+    --green:          #39d353;
+    --purple:         #7c5cd8;
+    --gold:           #d4af37;
+    --red:            #e14b4b;
+
+    /* ── Node-type badge palette ── */
+    --badge-start-end-bg:  #0c4a6e;
+    --badge-start-end-fg:  #00d4ff;
+    --badge-file-bg:       #1e3a5f;
+    --badge-file-fg:       #60a5fa;
+    --badge-class-bg:      #1e1b4b;
+    --badge-class-fg:      #a78bfa;
+    --badge-method-bg:     #1a3040;
+    --badge-method-fg:     #7dd3fc;
+    --badge-function-bg:   #14532d;
+    --badge-function-fg:   #4ade80;
+    --badge-decision-bg:   #450a0a;
+    --badge-decision-fg:   #f87171;
+
+    --shadow-sm:       0 2px 6px rgba(0,0,0,0.4);
+    --shadow-md:       0 4px 12px rgba(0,0,0,0.55);
+    --shadow-card:     0 4px 20px rgba(0,0,0,0.6), 0 0 0 1px rgba(29,111,216,0.12);
+    --shadow-glow:     0 0 28px rgba(0, 212, 255, 0.12);
+    --transition:      0.18s ease;
+    --radius:          8px;
+    --radius-sm:       5px;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+    background-color: var(--vscode-editor-background, var(--bg-deep));
+    color: var(--vscode-editor-foreground, var(--text-primary));
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ─── Layout ──────────────────────────────────────── */
+
+.app-container {
+    display: grid;
+    grid-template-columns: 240px 1fr 300px;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* ─── Left Sidebar ────────────────────────────────── */
+
+.sidebar-left {
+    background: linear-gradient(180deg,
+        var(--vscode-sideBar-background, #0f1520) 0%,
+        var(--vscode-sideBar-background, #0d1117) 100%);
+    border-right: 1px solid var(--vscode-sideBar-border, var(--border));
+    display: flex;
+    flex-direction: column;
+    padding: 20px 16px 20px 18px;
+    gap: 0;
+    position: relative;
+}
+
+/* Thin accent bar along the top of the sidebar */
+.sidebar-left::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan-dim), transparent 70%);
+    opacity: 0.5;
+}
+
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border-subtle));
+}
+
+.sidebar-left h2 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+    font-weight: 700;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    margin: 0;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.control-item {
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 10px;
+    background: rgba(255,255,255,0.025);
+    border: 1px solid var(--vscode-editorWidget-border, var(--border-subtle));
+    border-radius: var(--radius-sm);
+    color: var(--vscode-editor-foreground, var(--text-secondary));
+}
+
+.control-item-value {
+    color: var(--cyan);
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.control-item-hint {
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-size: 11px;
+    background: transparent;
+    border-color: transparent;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+
+/* ─── Main Canvas ─────────────────────────────────── */
+
+.main-panel {
+    position: relative;
+    background-color: var(--vscode-editor-background, var(--bg-canvas));
+    /* Dot-grid pattern visible in standalone mode */
+    background-image: radial-gradient(circle, rgba(30,45,69,0.8) 1px, transparent 1px);
+    background-size: 28px 28px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.breadcrumb-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 20px;
+    background-color: var(--vscode-editorWidget-background, var(--bg-card));
+    border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border));
+    font-size: 12px;
+    color: var(--vscode-editor-foreground, var(--text-secondary));
+    z-index: 5;
+}
+
+.btn-back {
+    background: transparent;
+    border: 1px solid var(--vscode-editorWidget-border, var(--border-glow));
+    color: var(--vscode-editor-foreground, var(--text-secondary));
+    cursor: pointer;
+    padding: 3px 10px;
+    border-radius: var(--radius);
+    font-size: 11px;
+    transition: all var(--transition);
+}
+
+.btn-back:hover {
+    background: rgba(29, 111, 216, 0.15);
+    border-color: var(--cyan-dim);
+    color: var(--vscode-editor-foreground, var(--text-primary));
+}
+
+#cy {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* ─── Zoom Controls Overlay ───────────────────────── */
+
+.zoom-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 10;
+}
+
+.zoom-btn {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--vscode-editorWidget-background, linear-gradient(160deg, #18213a 0%, #111827 100%));
+    color: var(--vscode-editor-foreground, var(--text-secondary));
+    border: 1px solid var(--vscode-editorWidget-border, rgba(29,111,216,0.3));
+    border-radius: var(--radius-sm);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition),
+                color var(--transition), transform var(--transition), box-shadow var(--transition);
+    box-shadow: var(--shadow-sm);
+    user-select: none;
+}
+
+.zoom-btn:hover {
+    background: rgba(29, 111, 216, 0.2);
+    border-color: var(--cyan);
+    color: var(--cyan);
+    transform: scale(1.12);
+}
+
+.zoom-btn:active {
+    transform: scale(0.94);
+}
+
+/* ─── Right Sidebar ───────────────────────────────── */
+
+.sidebar-right {
+    background: linear-gradient(180deg,
+        var(--vscode-sideBar-background, #0f1520) 0%,
+        var(--vscode-sideBar-background, #0d1117) 100%);
+    border-left: 1px solid var(--vscode-sideBar-border, var(--border));
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.panel-section {
+    border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border-subtle));
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-section-grow {
+    border-bottom: none;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border-subtle));
+    background: rgba(255,255,255,0.015);
+}
+
+.panel-section h2,
+.panel-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.8px;
+    font-weight: 700;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    margin: 0;
+}
+
+.panel-completion-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green);
+    background: rgba(57, 211, 83, 0.1);
+    border: 1px solid rgba(57, 211, 83, 0.3);
+    border-radius: 10px;
+    padding: 1px 8px;
+}
+
+.panel-body {
+    padding: 14px 16px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* ─── Node Details ────────────────────────────────── */
+
+#nodeInfo {
+    transition: all var(--transition);
+}
+
+.node-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.node-type-badge {
+    font-size: 9px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.badge-start-end  { background: var(--badge-start-end-bg);  color: var(--badge-start-end-fg);  }
+.badge-file       { background: var(--badge-file-bg);       color: var(--badge-file-fg);       }
+.badge-class      { background: var(--badge-class-bg);      color: var(--badge-class-fg);      }
+.badge-method     { background: var(--badge-method-bg);     color: var(--badge-method-fg);     }
+.badge-function   { background: var(--badge-function-bg);   color: var(--badge-function-fg);   }
+.badge-decision   { background: var(--badge-decision-bg);   color: var(--badge-decision-fg);   }
+.badge-default    { background: rgba(100,116,139,0.2);       color: var(--text-secondary);      }
+/* Smaller variant used in the connections list */
+.badge-sm { font-size: 8px; padding: 1px 5px; }
+
+.node-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--vscode-editor-foreground, var(--text-primary));
+    line-height: 1.2;
+}
+
+.node-path {
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    margin: 4px 0 12px;
+    font-family: 'Cascadia Code', 'Consolas', 'Fira Code', monospace;
+    word-break: break-all;
+}
+
+.pseudocode-content,
+.node-description {
+    font-size: 12px;
+    color: var(--vscode-editor-foreground, var(--text-secondary));
+    line-height: 1.65;
+    background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.03));
+    border: 1px solid var(--vscode-editorWidget-border, var(--border));
+    border-left: 3px solid var(--cyan-dim);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    white-space: pre-wrap;
+    margin-bottom: 12px;
+}
+
+.empty-state {
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-size: 12px;
+    text-align: center;
+    padding: 40px 12px;
+    opacity: 0.7;
+    line-height: 1.6;
+}
+
+.error-state {
+    color: var(--vscode-errorForeground, var(--red));
+    opacity: 1;
+}
+
+.warning-state {
+    color: var(--vscode-editorWarning-foreground, #cca700);
+    opacity: 1;
+    margin-bottom: 8px;
+}
+
+.warning-item {
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-size: 11px;
+    text-align: left;
+    line-height: 1.5;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+/* ─── Connections section (single-click panel) ──────── */
+
+.connections-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    margin: 4px 0 6px;
+}
+
+.connections-list {
+    list-style: none;
+    margin: 0 0 12px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.connections-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--vscode-editor-foreground, var(--text-primary));
+    background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.03));
+    border: 1px solid var(--vscode-editorWidget-border, var(--border));
+    border-radius: var(--radius);
+    padding: 5px 8px;
+}
+
+/* Double-click hint shown below connections for file nodes */
+.node-dblclick-hint {
+    font-size: 11px;
+    color: var(--cyan-dim, #0ea5c9);
+    border: 1px dashed var(--cyan-dim, #0ea5c9);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    text-align: center;
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+.error-retry {
+    display: block;
+    margin: 12px auto 0;
+}
+
+/* ─── Bob Agent Section ───────────────────────────── */
+
+.chat-placeholder,
+.agent-body {
+    flex-grow: 1;
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-size: 12px;
+    text-align: center;
+}
+
+.agent-icon {
+    width: 44px;
+    height: 44px;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    opacity: 0.5;
+    margin-bottom: 4px;
+}
+
+.chat-placeholder strong,
+.agent-placeholder-title {
+    color: var(--vscode-editor-foreground, var(--text-primary));
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* ─── Buttons ─────────────────────────────────────── */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--vscode-button-background, linear-gradient(135deg, #1d6fd8 0%, #1459b0 100%));
+    color: var(--vscode-button-foreground, #ffffff);
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all var(--transition);
+    width: 100%;
+    white-space: nowrap;
+    box-shadow: 0 2px 8px rgba(29,111,216,0.25);
+    letter-spacing: 0.1px;
+}
+
+.btn:hover {
+    background: var(--vscode-button-hoverBackground, linear-gradient(135deg, #2d88ff 0%, #1d6fd8 100%));
+    box-shadow: 0 0 14px rgba(45, 136, 255, 0.45);
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: scale(0.98) translateY(0);
+    box-shadow: none;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--vscode-editorWidget-border, rgba(29,111,216,0.4));
+    color: var(--vscode-editor-foreground, var(--text-secondary));
+    box-shadow: none;
+}
+
+.btn-secondary:hover {
+    background: rgba(29, 111, 216, 0.1);
+    color: var(--vscode-editor-foreground, var(--text-primary));
+    border-color: var(--cyan-dim);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.18);
+    transform: translateY(-1px);
+}
+
+.btn-open-ide {
+    background: var(--cyan, #00d4ff);
+    color: #000 !important;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.25);
+}
+
+.btn-open-ide:hover {
+    background: #33deff;
+    box-shadow: 0 0 16px rgba(0, 212, 255, 0.45);
+}
+
+.btn-full {
+    width: 100%;
+    margin-top: 4px;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: var(--vscode-button-background, var(--blue));
+}
+
+/* ─── Icon helpers ────────────────────────────────── */
+
+.btn svg, .icon {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+}

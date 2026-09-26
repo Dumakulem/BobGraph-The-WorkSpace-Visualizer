@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; script-src 'unsafe-inline' ${webview.cspSource} https://cdnjs.cloudflare.com https://unpkg.com; style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com; font-src ${webview.cspSource} https://fonts.gstatic.com; connect-src ${webview.cspSource};">
+    <title>BOB AI - Workspace Visualizer</title>
+    <style>
+        .brand-icon { width: 20px; height: 20px; vertical-align: middle; border-radius: 3px; flex-shrink: 0; }
+        .brand-icon-lg { width: 36px; height: 36px; border-radius: 5px; margin-bottom: 6px; }
+        .sidebar-brand h2 { margin: 0; }
+        .agent-brand { display: flex; flex-direction: column; align-items: center; gap: 0; }
+    </style>
+    <!-- Cytoscape.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.26.0/cytoscape.min.js"></script>
+    <!-- Dagre layout library: cytoscape-dagre captures window.dagre at load time, so this MUST come first -->
+    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+    <!-- Dagre layout extension for Cytoscape.js (exposes window.cytoscapeDagre) -->
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+    <link rel="stylesheet" href="{{styleUri}}">
+</head>
+<body>
+    <div class="app-container">
+
+        <!-- Left Sidebar -->
+        <aside class="sidebar-left">
+            <div class="sidebar-brand">
+                <img src="{{iconUri}}" alt="BOB AI" class="brand-icon">
+                <h2>Controls</h2>
+            </div>
+            <div class="control-group">
+                <div class="control-item">
+                    <span>Model Depth</span>
+                    <span class="control-item-value">Full</span>
+                </div>
+                <div class="control-item control-item-hint">
+                    <span>Bob 2.0 analysis</span>
+                    <span>sample data</span>
+                </div>
+                <button class="btn" id="refreshBtn">
+                    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M13.65 2.35A8 8 0 1 0 15 8h-2a6 6 0 1 1-1.06-3.39L10 6h5V1l-1.35 1.35z" fill="currentColor"/>
+                    </svg>
+                    Refresh Graph
+                </button>
+                <button class="btn btn-secondary btn-block" id="exportBtn">
+                    <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 13h12v1.5H2V13zm6-1.5L4.5 8H7V2h2v6h2.5L8 11.5z" fill="currentColor"/>
+                    </svg>
+                    Export JSON
+                </button>
+            </div>
+        </aside>
+
+        <!-- Center Panel -->
+        <main class="main-panel">
+            <div id="breadcrumb" class="breadcrumb-bar" style="display: none;">
+                <button id="backBtn" class="btn-back">← Back to Workspace</button>
+                <span id="breadcrumbText">Workspace &rsaquo; </span>
+            </div>
+            <div id="cy"></div>
+            <!-- Zoom controls overlay -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoomInBtn"  title="Zoom in">+</button>
+                <button class="zoom-btn" id="zoomFitBtn" title="Fit graph">⊡</button>
+                <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">−</button>
+            </div>
+        </main>
+
+        <!-- Right Sidebar -->
+        <aside class="sidebar-right">
+
+            <!-- Node Details -->
+            <div class="panel-section">
+                <div class="panel-section-header">
+                    <h2 class="panel-section-title">Node Details</h2>
+                    <span class="panel-completion-badge" id="completionBadge" style="display:none;">100%</span>
+                </div>
+                <div class="panel-body">
+                    <div id="nodeInfo">
+                        <div class="empty-state">Click any node to see its description and connections.<br><strong>Double-click</strong> a file node to open its flowchart.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bob Agent -->
+            <div class="panel-section panel-section-grow">
+                <div class="panel-section-header">
+                    <h2 class="panel-section-title">Bob Agent</h2>
+                </div>
+                <div class="chat-placeholder">
+                    <div class="agent-brand">
+                        <img src="{{iconUri}}" alt="BOB AI" class="brand-icon-lg">
+                    </div>
+                    <strong>Not connected</strong>
+                    <span>Ask questions about any node once the Bob 2.0 backend is wired up.</span>
+                </div>
+            </div>
+
+        </aside>
+    </div>
+    <script src="{{jsUri}}"></script>
+</body>
+</html>
