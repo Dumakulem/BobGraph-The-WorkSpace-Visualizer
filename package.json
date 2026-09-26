@@ -1,6 +1,6 @@
 {
   "name": "bobai-visualizer",
-  "displayName": "BOB AI - Workspace Visualizer",
+  "displayName": "BobGraph - Workspace Visualizer",
   "publisher": "bob-ai-team",
   "description": "VS Code extension that parses a project's code structure with IBM Bob 2.0 and renders it as an interactive graph, with click-to-view pseudocode for faster onboarding",
   "license": "MIT",
@@ -28,31 +28,31 @@
       {
         "command": "bobai-visualizer.openVisualizer",
         "title": "Open Workspace Visualizer",
-        "category": "BOB AI",
+        "category": "BobGraph",
         "icon": "media/icon.png"
       },
       {
         "command": "bobai-visualizer.showGettingStarted",
         "title": "Show Getting Started",
-        "category": "BOB AI",
+        "category": "BobGraph",
         "icon": "media/icon.png"
       },
       {
         "command": "bobai-visualizer.generateWorkspaceGraph",
         "title": "Generate Workspace Graph",
-        "category": "BOB AI"
+        "category": "BobGraph"
       },
       {
         "command": "bobai-visualizer.checkAiConnection",
-        "title": "Check AI Model Connection",
-        "category": "BOB AI",
+        "title": "Check Language Model Connection",
+        "category": "BobGraph",
         "icon": "media/icon.png"
       }
     ],
     "walkthroughs": [
       {
         "id": "bobaiVisualizer.gettingStarted",
-        "title": "Get Started with BOB AI Visualizer",
+        "title": "Get Started with BobGraph",
         "description": "Turn a codebase into an interactive graph and read AI pseudocode on click.",
         "icon": "media/icon.png",
         "featuredFor": [
@@ -107,7 +107,7 @@
     ],
     "welcomePage": {
       "showOnStartup": "Walkthrough",
-      "contents": "Thanks for installing **BOB AI - Workspace Visualizer**!\n\nOnboarding a codebase usually means reading every file. This extension renders the project as a graph and puts an AI-written pseudocode summary of any node one click away.\n\nWork through the walkthrough on the left, or jump straight in:\n\n[Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)\n\nCurrently rendering bundled sample data. Live Bob 2.0 output is the next milestone - see `ARCHITECTURE.md` section 8."
+      "contents": "Thanks for installing **BobGraph - Workspace Visualizer**!\n\nOnboarding a codebase usually means reading every file. This extension renders the project as a graph and puts an AI-written pseudocode summary of any node one click away.\n\nWork through the walkthrough on the left, or jump straight in:\n\n[Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)\n\nCurrently rendering bundled sample data. Live model output is the next milestone - see `ARCHITECTURE.md` section 8."
     }
   },
   "scripts": {

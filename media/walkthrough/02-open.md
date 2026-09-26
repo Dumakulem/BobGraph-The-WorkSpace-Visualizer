@@ -1,8 +1,8 @@
-![BOB AI Visualizer](../icon.png)
+![BobGraph](../icon.png)
 
 # Open the Visualizer
 
-Click the link below — or run **BOB AI: Open Workspace Visualizer** from the Command Palette (`Ctrl+Shift+P`) at any time.
+Click the link below — or run **BobGraph: Open Workspace Visualizer** from the Command Palette (`Ctrl+Shift+P`) at any time.
 
 [Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)
 
