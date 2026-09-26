@@ -55,11 +55,15 @@ id_rsa
 id_dsa
 *.ppk
 
-# Generic credential patterns
-*credentials*
-*secret*
-*password*
-*token*
+# Credential file names
+credentials.json
+credentials.yaml
+credentials.yml
+secrets.json
+secrets.yaml
+secrets.yml
+passwords.json
+tokens.json
 
 # Database credentials
 database.yml
@@ -104,6 +108,7 @@ target/
 
 # Build outputs
 dist/
+out/
 build/
 *.log
 
@@ -111,7 +116,6 @@ build/
 *.bak
 *.tmp
 *.temp
-*~
 .backup/
 
 # ============================================

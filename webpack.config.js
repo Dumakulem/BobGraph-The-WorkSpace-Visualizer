@@ -3,6 +3,7 @@
 'use strict';
 
 const path = require('path');
+const CopyPlugin = require('copy-webpack-plugin');
 
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
@@ -40,6 +41,18 @@ const extensionConfig = {
       }
     ]
   },
+  plugins: [
+    new CopyPlugin({
+      patterns: [
+        { from: 'webview/main.js', to: 'webview/main.js' },
+        { from: 'webview/style.css', to: 'webview/style.css' },
+        {
+          from: 'node_modules/vis-network/standalone/umd/vis-network.min.js',
+          to: 'webview/vendor/vis-network.min.js',
+        },
+      ],
+    }),
+  ],
   devtool: 'nosources-source-map',
   infrastructureLogging: {
     level: "log", // enables logging required for problem matchers

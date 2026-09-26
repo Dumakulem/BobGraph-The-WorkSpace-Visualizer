@@ -1,0 +1,72 @@
+{
+  "nodes": [
+    {
+      "id": "extension",
+      "label": "extension.ts",
+      "type": "file",
+      "filePath": "src/extension.ts"
+    },
+    {
+      "id": "graphPanel",
+      "label": "graphPanel.ts",
+      "type": "file",
+      "filePath": "src/panel/graphPanel.ts"
+    },
+    {
+      "id": "graphStore",
+      "label": "graphStore.ts",
+      "type": "file",
+      "filePath": "src/bob/graphStore.ts"
+    },
+    {
+      "id": "bobAdapter",
+      "label": "bobAdapter.ts",
+      "type": "file",
+      "filePath": "src/bob/bobAdapter.ts"
+    },
+    {
+      "id": "explainNode",
+      "label": "explainNode.ts",
+      "type": "file",
+      "filePath": "src/bob/explainNode.ts"
+    },
+    {
+      "id": "readme",
+      "label": "README.md",
+      "type": "file",
+      "filePath": "README.md"
+    }
+  ],
+  "edges": [
+    {
+      "from": "extension",
+      "to": "graphPanel",
+      "relation": "creates"
+    },
+    {
+      "from": "graphPanel",
+      "to": "graphStore",
+      "relation": "reads"
+    },
+    {
+      "from": "graphPanel",
+      "to": "explainNode",
+      "relation": "calls"
+    },
+    {
+      "from": "extension",
+      "to": "bobAdapter",
+      "relation": "imports"
+    },
+    {
+      "from": "bobAdapter",
+      "to": "graphStore",
+      "relation": "writes"
+    },
+    {
+      "from": "readme",
+      "to": "extension",
+      "relation": "documents"
+    }
+  ]
+}

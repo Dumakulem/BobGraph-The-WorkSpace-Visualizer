@@ -6,7 +6,12 @@
 	const statusElement = document.getElementById('status');
 	const detailsElement = document.getElementById('details');
 	const summaryElement = document.getElementById('summary');
+	const refreshButton = document.getElementById('refresh');
 	let network;
+
+	refreshButton.addEventListener('click', () => {
+		vscode.postMessage({ type: 'requestRefresh' });
+	});
 
 	window.addEventListener('message', (event) => {
 		const message = event.data;
@@ -16,22 +21,26 @@
 				renderGraph(message.graph);
 				break;
 			case 'graphLoading':
-				statusElement.textContent = 'Bob is generating the workspace graph...';
 				graphElement.classList.add('loading');
+				graphElement.textContent = '';
+				statusElement.textContent = 'Loading workspace graph…';
+				refreshButton.disabled = true;
 				break;
 			case 'explanationLoading':
-				summaryElement.textContent = 'Bob is preparing a summary...';
+				summaryElement.textContent = 'Bob is preparing a summary…';
 				detailsElement.hidden = false;
 				statusElement.textContent = `Explaining node: ${message.nodeId}`;
 				break;
 			case 'nodeExplanation':
 				summaryElement.textContent = message.summary;
 				detailsElement.hidden = false;
-				statusElement.textContent = `Selected node: ${message.nodeId}`;
+				statusElement.textContent = `Selected: ${message.nodeId}`;
 				break;
 			case 'error':
-				statusElement.textContent = message.message;
 				graphElement.classList.remove('loading');
+				graphElement.textContent = message.message;
+				statusElement.textContent = 'Error';
+				refreshButton.disabled = false;
 				break;
 			default:
 				break;
@@ -40,12 +49,23 @@
 
 	function renderGraph(graph) {
 		graphElement.classList.remove('loading');
+		refreshButton.disabled = false;
+
+		// Destroy the previous vis.Network instance before creating a new one.
+		// Without this, every refresh leaks canvas listeners and internal state.
+		if (network) {
+			network.destroy();
+			network = undefined;
+		}
+
 		if (graph.nodes.length === 0) {
-			graphElement.textContent = 'No workspace graph data is available yet.';
-			statusElement.textContent = 'The graph is empty.';
+			graphElement.textContent =
+				'No nodes found. Run "BobGraph: Generate Workspace Graph" to create .bobgraph/workspace-graph.json.';
+			statusElement.textContent = 'Graph is empty.';
 			return;
 		}
 
+		// Keep untrusted graph data as text; never interpolate it with innerHTML.
 		graphElement.textContent = '';
 		const nodes = new vis.DataSet(graph.nodes.map((node) => ({
 			id: node.id,
@@ -72,7 +92,7 @@
 				vscode.postMessage({ type: 'nodeClicked', nodeId });
 			}
 		});
-		statusElement.textContent = `${graph.nodes.length} nodes, ${graph.edges.length} relationships`;
+		statusElement.textContent = `${graph.nodes.length} nodes · ${graph.edges.length} edges`;
 	}
 
 	vscode.postMessage({ type: 'ready' });
