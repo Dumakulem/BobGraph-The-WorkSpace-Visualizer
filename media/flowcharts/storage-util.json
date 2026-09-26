@@ -1,0 +1,32 @@
+{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start_end",
+      "name": "Start",
+      "filePath": "src/utils/storage-util.js",
+      "line": 1,
+      "pseudocode": "Entry point of the utility."
+    },
+    {
+      "id": "save_disk",
+      "type": "function",
+      "name": "saveToDisk()",
+      "filePath": "src/utils/storage-util.js",
+      "line": 5,
+      "pseudocode": "Saves data to localStorage."
+    },
+    {
+      "id": "end",
+      "type": "start_end",
+      "name": "End",
+      "filePath": "src/utils/storage-util.js",
+      "line": 10,
+      "pseudocode": "Saving complete."
+    }
+  ],
+  "edges": [
+    { "source": "start", "target": "save_disk", "relation": "flow" },
+    { "source": "save_disk", "target": "end", "relation": "flow" }
+  ]
+}

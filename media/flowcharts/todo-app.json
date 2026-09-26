@@ -1,0 +1,41 @@
+{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start_end",
+      "name": "Start",
+      "filePath": "src/todo-app.js",
+      "line": 1,
+      "pseudocode": "Entry point of the file."
+    },
+    {
+      "id": "valid_check",
+      "type": "decision",
+      "name": "Input Valid?",
+      "filePath": "src/todo-app.js",
+      "line": 15,
+      "pseudocode": "Verify that the task string is not empty."
+    },
+    {
+      "id": "add_todo",
+      "type": "method",
+      "name": "addTodo()",
+      "filePath": "src/todo-app.js",
+      "line": 20,
+      "pseudocode": "Pushes a new task object to the array."
+    },
+    {
+      "id": "end",
+      "type": "start_end",
+      "name": "End",
+      "filePath": "src/todo-app.js",
+      "line": 30,
+      "pseudocode": "Operation complete."
+    }
+  ],
+  "edges": [
+    { "source": "start", "target": "valid_check", "relation": "flow" },
+    { "source": "valid_check", "target": "add_todo", "relation": "flow" },
+    { "source": "add_todo", "target": "end", "relation": "flow" }
+  ]
+}

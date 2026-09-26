@@ -1,0 +1,312 @@
+/*
+ * Theme colours come from the host via the variables VS Code injects into every
+ * webview. The hex fallbacks only apply when this file is opened directly in a
+ * browser (the standalone prototype), so they are dark on purpose.
+ * Do not redefine these in :root - that would shadow the host and freeze the
+ * panel to one theme regardless of what the user picked.
+ */
+:root {
+    --accent-blue: #007acc;
+    --accent-indigo: #5865f2;
+    --accent-slate: #64748b;
+    --accent-green: #4ade80;
+    --accent-gold: #d4af37;
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 8px rgba(0,0,0,0.5);
+    --transition-speed: 0.2s;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--vscode-editor-background, #1e1e1e);
+    color: var(--vscode-editor-foreground, #cccccc);
+    overflow: hidden;
+}
+
+.app-container {
+    display: grid;
+    grid-template-columns: 240px 1fr 320px;
+    width: 100vw;
+    height: 100vh;
+}
+
+/* --- Left Sidebar --- */
+.sidebar-left {
+    background-color: var(--vscode-sideBar-background, #252526);
+    border-right: 1px solid var(--vscode-sideBar-border, var(--vscode-editorWidget-border, #3c3c3c));
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.sidebar-left h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent-slate);
+    margin-bottom: 20px;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.control-item {
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+}
+
+.control-item-hint {
+    color: var(--vscode-descriptionForeground, var(--accent-slate));
+    font-size: 11px;
+}
+
+/* --- Center Panel --- */
+.main-panel {
+    position: relative;
+    background-color: var(--vscode-editor-background, #1e1e1e);
+    display: flex;
+    flex-direction: column;
+}
+
+.breadcrumb-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 20px;
+    background-color: var(--vscode-editorWidget-background, #252526);
+    border-bottom: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+    font-size: 12px;
+    color: var(--vscode-editor-foreground, #cccccc);
+}
+
+.btn-back {
+    background: transparent;
+    border: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+    color: var(--vscode-editor-foreground, #cccccc);
+    cursor: pointer;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    transition: all var(--transition-speed) ease;
+}
+
+.btn-back:hover {
+    background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+    border-color: var(--accent-blue);
+}
+
+#cy {
+    flex-grow: 1;
+    width: 100%;
+    height: 100%;
+}
+
+/* --- Right Sidebar --- */
+.sidebar-right {
+    background-color: var(--vscode-sideBar-background, #252526);
+    border-left: 1px solid var(--vscode-sideBar-border, var(--vscode-editorWidget-border, #3c3c3c));
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.panel-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+    background: linear-gradient(
+        180deg,
+        var(--vscode-sideBar-background, #252526) 0%,
+        color-mix(in srgb, var(--vscode-sideBar-background, #252526) 88%, var(--vscode-editor-background, #1e1e1e)) 100%
+    );
+}
+
+.panel-section-grow {
+    border-bottom: none;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-section h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--accent-slate);
+    margin-bottom: 16px;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+}
+
+#nodeInfo {
+    transition: all var(--transition-speed) ease;
+}
+
+.node-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.node-type-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+    background: var(--accent-slate);
+    color: #ffffff;
+}
+
+.node-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--vscode-editor-foreground, #e0e0e0);
+}
+
+.node-path {
+    font-size: 11px;
+    color: var(--accent-slate);
+    margin-bottom: 12px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+}
+
+.pseudocode-content {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--vscode-editor-foreground, #e0e0e0);
+    background: var(--vscode-textCodeBlock-background, rgba(0,0,0,0.2));
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-blue);
+    font-style: italic;
+    white-space: pre-wrap;
+}
+
+.empty-state {
+    color: var(--accent-slate);
+    font-size: 12px;
+    text-align: center;
+    margin-top: 40px;
+    opacity: 0.6;
+}
+
+.error-state {
+    color: var(--vscode-errorForeground, #f48771);
+    opacity: 1;
+}
+
+.warning-state {
+    color: var(--vscode-editorWarning-foreground, #cca700);
+    opacity: 1;
+    margin-bottom: 8px;
+}
+
+.warning-item {
+    color: var(--vscode-descriptionForeground, var(--accent-slate));
+    font-size: 11px;
+    text-align: left;
+    line-height: 1.5;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.error-retry {
+    display: block;
+    margin: 12px auto 0;
+}
+
+.chat-placeholder {
+    flex-grow: 1;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    color: var(--vscode-descriptionForeground, var(--accent-slate));
+    font-size: 13px;
+    text-align: center;
+}
+
+.chat-placeholder strong {
+    color: var(--vscode-editor-foreground, #cccccc);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Interactive Elements */
+.btn {
+    background: var(--vscode-button-background, #007acc);
+    color: var(--vscode-button-foreground, #ffffff);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all var(--transition-speed) ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn:hover {
+    background: var(--vscode-button-hoverBackground, #1e8fe0);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+    color: var(--vscode-editor-foreground, #cccccc);
+}
+
+.btn-secondary:hover {
+    background: var(--vscode-toolbar-hoverBackground, #2a2d2e);
+    border-color: var(--accent-slate);
+}
+
+.btn-full {
+    width: 100%;
+    margin-top: 16px;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+}
+
+/* Controls whose backend does not exist yet. Kept visible so the intended feature
+   set is legible, but clearly inert so nobody waits on a click that never lands. */
+.btn:disabled {
+    background: var(--vscode-button-background, #007acc);
+    color: var(--vscode-button-foreground, #ffffff);
+    opacity: 0.45;
+    cursor: not-allowed;
+    filter: none;
+    box-shadow: none;
+}
+
+.btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: var(--vscode-button-background, #007acc);
+    filter: none;
+}
