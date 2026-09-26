@@ -36,6 +36,12 @@
         "title": "Show Getting Started",
         "category": "BOB AI",
         "icon": "media/icon.png"
+      },
+      {
+        "command": "bobai-visualizer.generateWorkspaceGraph",
+        "title": "Generate Workspace Graph",
+        "category": "BOB AI",
+        "icon": "media/icon.png"
       }
     ],
     "walkthroughs": [

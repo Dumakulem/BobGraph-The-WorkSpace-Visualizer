@@ -21,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
 let currentView = 'workspace';
 let currentFile = null;
 let isLoading = false;
+    let workspaceModel = null;
+    let pendingWorkspaceModel = null;
 
     // cose runs a physics simulation, so its cost grows steeply with node count and a
     // big real workspace can lock the webview up for minutes. Past this threshold we
@@ -98,8 +100,10 @@ let isLoading = false;
             if (!edge || typeof edge !== 'object') {
                 return;
             }
-            const source = edge.source === undefined ? null : String(edge.source);
-            const target = edge.target === undefined ? null : String(edge.target);
+            const sourceValue = edge.from ?? edge.source;
+            const targetValue = edge.to ?? edge.target;
+            const source = sourceValue === undefined ? null : String(sourceValue);
+            const target = targetValue === undefined ? null : String(targetValue);
             if (!seen.has(source) || !seen.has(target)) {
                 droppedEdges.push(`${source ?? '?'} -> ${target ?? '?'}`);
                 return;
@@ -433,6 +437,7 @@ let isLoading = false;
             // Collect neighbours from the live graph so we can show connections in the panel.
             const neighbours = node.neighbourhood('node').map(n => n.data());
             showNodeDetails(data, neighbours);
+            window.vscode?.postMessage({ type: 'nodeClicked', nodeId: data.id });
         });
 
         // Double-tap: drill into the file's flowchart (workspace view only).
@@ -571,6 +576,9 @@ let isLoading = false;
     // failed drill-down leaves the workspace view usable and retryable.
     async function renderWorkspaceGraph(model) {
         if (isLoading) {
+            if (model) {
+                pendingWorkspaceModel = model;
+            }
             return;
         }
         isLoading = true;
@@ -578,6 +586,7 @@ let isLoading = false;
         try {
             const raw = model ?? await fetchModel(window.MOCK_DATA_URI || 'workspace-graph.json', 'workspace graph');
             const { model: data, warnings } = sanitizeModel(raw);
+            workspaceModel = raw;
             const downgraded = initGraph(data, 'cose');
             currentView = 'workspace';
             currentFile = null;
@@ -596,6 +605,11 @@ let isLoading = false;
             );
         } finally {
             isLoading = false;
+            if (pendingWorkspaceModel) {
+                const pending = pendingWorkspaceModel;
+                pendingWorkspaceModel = null;
+                void renderWorkspaceGraph(pending);
+            }
         }
     }
 
@@ -731,6 +745,14 @@ let isLoading = false;
         const message = event.data;
         if (message && message.type === 'loadModel') {
             renderWorkspaceGraph(message.payload);
+        } else if (message && message.type === 'explanationLoading') {
+            const summary = document.getElementById('summary');
+            if (summary) summary.textContent = 'Bob is preparing a summary...';
+        } else if (message && message.type === 'nodeExplanation') {
+            const summary = document.getElementById('summary');
+            if (summary) summary.textContent = message.summary;
+        } else if (message && message.type === 'graphError') {
+            showLoadError(message.message, () => window.vscode?.postMessage({ type: 'requestGraph' }));
         }
     });
 
@@ -745,6 +767,7 @@ let isLoading = false;
 
     document.getElementById('backBtn')?.addEventListener('click', () => {
         renderWorkspaceGraph();
+        window.vscode?.postMessage({ type: 'requestGraph' });
     });
 
     // ── Zoom controls ────────────────────────────────────────────────────────
@@ -769,7 +792,7 @@ let isLoading = false;
         const nodes = cy.nodes().map(n => ({ ...n.data() }));
         const edges = cy.edges().map(e => {
             const d = e.data();
-            return { source: d.source, target: d.target, relation: d.relation };
+            return { from: d.source, to: d.target, relation: d.relation };
         });
         const payload = JSON.stringify({ nodes, edges }, null, 2);
         const blob = new Blob([payload], { type: 'application/json' });
@@ -793,8 +816,12 @@ let isLoading = false;
             renderFlowchart(currentFile.fileId, currentFile.fileName);
         } else {
             renderWorkspaceGraph();
+            window.vscode?.postMessage({ type: 'requestGraph' });
         }
     });
 
+    // Render the bundled graph immediately while the host loads the validated
+    // workspace graph. The host response replaces this fallback when available.
     renderWorkspaceGraph();
+    window.vscode?.postMessage({ type: 'requestGraph' });
 });

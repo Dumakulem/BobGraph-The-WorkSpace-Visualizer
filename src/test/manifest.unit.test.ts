@@ -227,3 +227,75 @@ describe('packaging', () => {
         }
     });
 });
+
+describe('active runtime', () => {
+    const extensionSource = readRoot('src', 'extension.ts');
+    const webviewHtml = readRoot('media', 'webview.html');
+
+    it('exactly one command opens a graph panel', () => {
+        // Guards against a second registerCommand('...openVisualizer') being added,
+        // which would silently shadow or double-register the panel creation path.
+        const panelCreations = [...extensionSource.matchAll(/createWebviewPanel\(/g)];
+        assert.strictEqual(
+            panelCreations.length,
+            1,
+            `expected exactly 1 createWebviewPanel call in extension.ts, found ${panelCreations.length}`
+        );
+    });
+
+    it('the active webview is the Cytoscape (media/) runtime, not vis-network', () => {
+        // The media/webview.html template must load Cytoscape from CDN, not vis-network.
+        assert.ok(
+            webviewHtml.includes('cytoscape'),
+            'webview.html does not load Cytoscape — wrong runtime may be active'
+        );
+        assert.ok(
+            !webviewHtml.includes('vis-network'),
+            'webview.html loads vis-network — this is the wrong (dead) runtime'
+        );
+    });
+
+    it('extension.ts opens media/webview.html, not dist/webview', () => {
+        assert.ok(
+            extensionSource.includes("'webview.html'"),
+            'extension.ts does not reference media/webview.html'
+        );
+        assert.ok(
+            !extensionSource.includes("dist/webview"),
+            'extension.ts references dist/webview — the dead vis-network path is still wired up'
+        );
+    });
+
+    it('extension.ts does not import GraphPanel (the dead vis-network runtime)', () => {
+        assert.ok(
+            !extensionSource.includes('graphPanel'),
+            'extension.ts imports graphPanel — the dead vis-network runtime is still wired up'
+        );
+        assert.ok(
+            !extensionSource.includes('GraphPanel'),
+            'extension.ts imports GraphPanel — the dead vis-network runtime is still wired up'
+        );
+    });
+
+    it('webview.js message contract matches the handler in extension.ts', () => {
+        // The webview sends openFile; extension.ts must handle it.
+        // Guards against renaming one side of the message without updating the other.
+        const webviewJs = readRoot('media', 'webview.js');
+        assert.ok(
+            webviewJs.includes("type: 'openFile'"),
+            "media/webview.js no longer posts type:'openFile'"
+        );
+        assert.ok(
+            extensionSource.includes("'openFile'"),
+            "extension.ts no longer handles 'openFile' messages"
+        );
+    });
+
+    it('the webview runtime has no unresolved vis-network dependency', () => {
+        const webviewJs = readRoot('media', 'webview.js');
+        assert.ok(
+            !webviewJs.includes('vis.Network') && !webviewJs.includes('vis.DataSet'),
+            'media/webview.js references vis.Network — vis-network runtime code is present in the active webview'
+        );
+    });
+});
