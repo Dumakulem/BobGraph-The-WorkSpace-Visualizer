@@ -12,8 +12,9 @@ body {
 
 header {
 	display: flex;
-	align-items: baseline;
-	gap: 16px;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
 }
 
 h1 {
@@ -24,6 +25,27 @@ h1 {
 #status {
 	color: var(--vscode-descriptionForeground);
 	margin: 0;
+	flex: 1;
+}
+
+#refresh {
+	margin-left: auto;
+	padding: 3px 10px;
+	font-size: 0.8rem;
+	background: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border: none;
+	border-radius: 3px;
+	cursor: pointer;
+}
+
+#refresh:hover:not(:disabled) {
+	background: var(--vscode-button-hoverBackground);
+}
+
+#refresh:disabled {
+	opacity: 0.5;
+	cursor: default;
 }
 
 #graph {

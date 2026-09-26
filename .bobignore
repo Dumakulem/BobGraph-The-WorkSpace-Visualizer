@@ -20,25 +20,17 @@
 *ASSISTANT_API_KEY*
 *DISCOVERY_API_KEY*
 
-# Generic Credentials
-*API_KEY*
-*api_key*
-*ACCESS_TOKEN*
-*access_token*
-*SECRET_KEY*
-*secret_key*
-*PASSWORD*
-*password*
-*SECRET*
-*secret*
-*CREDENTIAL*
-*credential*
-*PRIVATE_KEY*
-*private_key*
-*AUTH_TOKEN*
-*auth_token*
-*BEARER_TOKEN*
-*bearer_token*
+# Credential file names
+credentials.json
+credentials.yaml
+credentials.yml
+secrets.json
+secrets.yaml
+secrets.yml
+passwords.json
+tokens.json
+private-key.pem
+auth-token.txt
 
 # Environment Files
 .env
@@ -47,12 +39,12 @@
 env.local
 
 # Configuration Files
-*credentials.json
-*credentials.yaml
-*secrets.json
-*secrets.yaml
-*config.json
-*config.yaml
+credentials.json
+credentials.yaml
+secrets.json
+secrets.yaml
+config.json
+config.yaml
 
 # Private Keys
 *.pem
@@ -89,3 +81,7 @@ id_dsa
 # ============================================
 # DO NOT REMOVE ABOVE PATTERNS
 # ============================================
+
+# Build and dependency directories
+node_modules/
+out/

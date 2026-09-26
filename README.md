@@ -1,68 +1,76 @@
-# IBM Hackathon GitHub Project Template
+# BobGraph
 
-This GitHub project template is for IBM Hackathon projects. It includes pre-configured security files to help prevent accidental credential commits and potential account suspension during the hackathon.
+BobGraph is a VS Code extension for onboarding through an interactive
+workspace graph. A graph JSON file describes code elements and their
+relationships; the extension validates it and renders it in a webview.
 
-## 🚀 Quick Start
+## Current capabilities
 
-1. **Use this template to create your project:**
-   - Click "Use this template" button above and select "Create a new repository"
-   - Name your repository
-   - Click "Create repository"
+- Open **BobGraph: Open Workspace Visualizer** from the Command Palette.
+- Load `.bobgraph/workspace-graph.json` from the current workspace.
+- Validate node, edge, duplicate-ID, and path-safety constraints.
+- Render the graph locally with `vis-network`.
+- Refresh the graph from the panel or with **BobGraph: Refresh Graph**.
+- Request a placeholder explanation when a node is selected.
 
-2. **Clone your new repository:**
+The Bob generation and explanation adapter remains an explicit stub until the
+IBM Bob integration contract is verified. Use **BobGraph: Generate Workspace
+Graph** to exercise that integration boundary.
+
+## Graph format
+
+```json
+{
+  "nodes": [
+    {
+      "id": "extension",
+      "label": "extension.ts",
+      "type": "file",
+      "filePath": "src/extension.ts"
+    }
+  ],
+  "edges": [
+    {
+      "from": "extension",
+      "to": "panel",
+      "relation": "imports"
+    }
+  ]
+}
+```
+
+Store the file at `.bobgraph/workspace-graph.json`. Node paths must be
+relative to the workspace and edges must reference existing node IDs.
+
+## Development
+
+1. Install dependencies:
 
    ```bash
-   git clone https://github.com/HACKATHON-ORG/your-repo-name.git
-   cd your-repo-name
+   npm install
    ```
 
-3. **Set up environment variables:**
+2. Compile the extension and webview assets:
 
    ```bash
-   # Copy the example file
-   cp .env.example .env
-
-   # Edit .env with your actual credentials
-   # Use your preferred editor (nano, vim, code, etc.)
-   nano .env
+   npm run compile
    ```
 
-4. **Verify .gitignore is working:**
+3. Press `F5` in VS Code to launch an Extension Development Host.
 
-   ```bash
-   # This should NOT show .env file
-   git status
+4. Run **BobGraph: Open Workspace Visualizer**.
 
-   # This should confirm .env is ignored
-   git check-ignore -v .env
-   ```
+## Validation
 
-5. **Start developing!**
+```bash
+npm run compile
+npm run lint
+npm run compile-tests
+```
 
-## 🔒 Security Features
+## Requirements
 
-This template includes:
+- Visual Studio Code `^1.138.0`
+- Node.js and npm
 
-- **`.gitignore`** - Prevents committing credentials and live session files
-- **`.bobignore`** - Prevents AI assistants from logging credentials
-- **`.env.example`** - Template for your environment variables
-
-## 📋 Before Every Commit
-
-Always run this checklist:
-
-- [ ] Reviewed `git diff` for sensitive data
-- [ ] No hardcoded API keys or passwords
-- [ ] `.env` file is NOT in staged changes
-- [ ] No files with "credential" or "secret" in name
-- [ ] Used environment variables for all credentials
-
-## 🆘 Need Help?
-
-- Read [SECURITY.md](SECURITY.MD) for detailed guidelines
-- Contact hackathon support through mentor channel
-- Ask in the hackathon Slack workspace
-
----
-
-**Remember:** Security is everyone's responsibility. When in doubt, ask for help!
+See [`SECURITY.MD`](./SECURITY.MD) for repository security guidance.
