@@ -16,6 +16,6 @@ Reading an unfamiliar codebase usually means opening files one by one, hoping co
 |---|---|
 | **Left** | Refresh and export controls |
 | **Center** | The interactive graph canvas |
-| **Right** | Node details, pseudocode, and the Bob Agent placeholder |
+| **Right** | Node details, pseudocode, and the AI Assistant |
 
 Start with the next step to open the visualizer and explore a sample workspace.

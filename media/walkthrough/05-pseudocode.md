@@ -14,7 +14,7 @@ Press **Open in IDE** to jump straight to that file with the cursor on the corre
 
 ## What's coming next
 
-- **Bob Agent** (right panel, below details) — ask questions about any node once the Bob 2.0 backend is connected.
+- **AI Assistant** (right panel, below details) — ask questions about any node using the configured VS Code language model.
 - **Export JSON** (left sidebar) — save the full graph model for use elsewhere.
 
 See `ARCHITECTURE.md` in the extension folder for the data contract and how to wire real Bob 2.0 output into the `{type:'loadModel'}` message the frontend already handles.

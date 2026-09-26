@@ -23,7 +23,11 @@ let currentFile = null;
 let currentFlowchartModel = null;
 let selectedNodeId = null;
 let selectedNodeData = null;
+let activeModelName = 'AI';
 let isLoading = false;
+    // Keep summaries outside Cytoscape's model so they survive graph refreshes and
+    // remain visible when a child flowchart node is selected.
+    const nodeSummaries = new Map();
     let workspaceModel = null;
     let pendingWorkspaceModel = null;
 
@@ -248,10 +252,10 @@ let isLoading = false;
 
     // A null colour means "resolve from the host theme" and is filled in by initGraph.
     const edgeStyles = {
-        contains: { color: '#1e2d45', width: 2,   lineStyle: 'solid',  targetArrow: 'triangle' },
-        calls:    { color: '#1d6fd8', width: 1.5, lineStyle: 'dashed', targetArrow: 'triangle' },
-        imports:  { color: '#4d5666', width: 1,   lineStyle: 'solid',  targetArrow: 'tee'      },
-        flow:     { color: '#00d4ff', width: 2,   lineStyle: 'solid',  targetArrow: 'triangle' }
+        contains: { color: '#1e2d45', width: 2,   targetArrow: 'triangle' },
+        calls:    { color: '#1d6fd8', width: 1.5, targetArrow: 'triangle' },
+        imports:  { color: '#4d5666', width: 1,   targetArrow: 'triangle' },
+        flow:     { color: '#00d4ff', width: 2,   targetArrow: 'triangle' }
     };
 
     function createElements(model) {
@@ -366,6 +370,8 @@ let isLoading = false;
                     style: {
                         'width': 2,
                         'curve-style': 'bezier',
+                        // Static markers are supported by the webview canvas used by
+                        // IBM Bob. Animated/dashed marker styles can disappear there.
                         'target-arrow-shape': 'triangle',
                         'line-color': borderColor,
                         'target-arrow-color': borderColor,
@@ -377,10 +383,6 @@ let isLoading = false;
                         'text-outline-opacity': 0.75,
                         'text-rotation': 'autorotate',
                         'text-margin-y': -10,
-                        // Dashed style + offset lets the rAF loop animate marching ants.
-                        'line-style': 'dashed',
-                        'line-dash-pattern': [8, 5],
-                        'line-dash-offset': 0,
                         'transition-property': 'line-color, target-arrow-color, width, opacity',
                         'transition-duration': '150ms'
                     }
@@ -392,7 +394,7 @@ let isLoading = false;
                         'target-arrow-color': style.color,
                         'target-arrow-shape': style.targetArrow,
                         'width': style.width,
-                        'line-style': style.lineStyle
+                        'line-style': 'solid'
                     }
                 })),
                 {
@@ -516,33 +518,6 @@ let isLoading = false;
             if (container && container.style) {
                 container.style.cursor = value;
             }
-        }
-
-        // ── Animated marching-ants on edges ──────────────────────────────────
-        // Cytoscape renders to a <canvas>, so CSS animations don't work on edges.
-        // Instead we drive line-dash-offset forward each frame via rAF, which makes
-        // the dashes appear to march along every edge continuously.
-        // Guard: requestAnimationFrame is unavailable in the Node.js test environment.
-        if (typeof requestAnimationFrame === 'function') {
-            let dashOffset = 0;
-            let animFrameId = null;
-
-            function animateEdges() {
-                dashOffset = (dashOffset - 1.2) % 60;   // negative = marches forward
-                cy.style()
-                    .selector('edge')
-                    .style({ 'line-dash-offset': dashOffset })
-                    .update();
-                animFrameId = requestAnimationFrame(animateEdges);
-            }
-
-            // Cancel the previous loop if initGraph is called again (e.g. drill-down).
-            if (window._edgeAnimFrameId) {
-                cancelAnimationFrame(window._edgeAnimFrameId);
-            }
-            // Start the loop and store the id globally so it survives the next initGraph.
-            animFrameId = requestAnimationFrame(animateEdges);
-            window._edgeAnimFrameId = animFrameId;
         }
 
         return downgraded;
@@ -742,7 +717,7 @@ let isLoading = false;
         const explanation = document.createElement('div');
         explanation.id = 'nodeExplanation';
         explanation.className = 'node-explanation';
-        explanation.textContent = 'Bob is preparing a summary...';
+        explanation.textContent = nodeSummaries.get(data.id) ?? 'Bob is preparing a summary...';
         infoDiv.append(explanation);
 
         // Connections section — list every neighbour node so the user can see
@@ -806,6 +781,9 @@ let isLoading = false;
                 if (summary) summary.textContent = 'Bob is preparing a summary...';
             }
         } else if (message && message.type === 'nodeExplanation') {
+            if (typeof message.nodeId === 'string' && typeof message.summary === 'string') {
+                nodeSummaries.set(message.nodeId, message.summary);
+            }
             if (message.nodeId === selectedNodeId) {
                 const summary = document.getElementById('nodeExplanation');
                 if (summary) summary.textContent = message.summary;
@@ -859,14 +837,15 @@ let isLoading = false;
     function updateAgentContext(data) {
         const input = document.getElementById('agentInput');
         const send = document.getElementById('agentSendBtn');
-        if (input) input.placeholder = `Ask Bob about ${data.label ?? 'this node'}...`;
+        if (input) input.placeholder = `Ask the assistant about ${data.label ?? 'this node'}...`;
         if (send) send.disabled = false;
     }
 
     function setAgentName(modelName) {
         const title = document.getElementById('agentTitle');
         if (title && typeof modelName === 'string' && modelName.trim()) {
-            title.textContent = `${modelName.trim()} Agent`;
+            activeModelName = modelName.trim();
+            title.textContent = `${activeModelName} Assistant`;
         }
     }
 
@@ -888,9 +867,7 @@ let isLoading = false;
         if (input) input.disabled = busy;
         if (send) {
             send.disabled = busy || !selectedNodeData;
-            const title = document.getElementById('agentTitle');
-            const modelName = title?.textContent?.replace(/\s+Agent$/, '') || 'AI';
-            send.textContent = busy ? `${modelName} is thinking...` : 'Ask';
+            send.textContent = busy ? `${activeModelName} is thinking...` : 'Ask';
         }
     }
 

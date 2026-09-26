@@ -41,7 +41,7 @@ export interface GraphProvider {
      * @param filePath       Absolute path to the source file.
      * @param workspaceRoot  Absolute path to the workspace root directory.
      */
-    explainNode(filePath: string, workspaceRoot: string): Promise<string>;
+    explainNode(filePath: string, workspaceRoot: string, nodeId?: string): Promise<string>;
 }
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ export class MockGraphProvider implements GraphProvider {
         return MockGraphProvider.validGraph();
     }
 
-    async explainNode(filePath: string, _workspaceRoot: string): Promise<string> {
+    async explainNode(filePath: string, _workspaceRoot: string, _nodeId?: string): Promise<string> {
         return `Mock explanation for ${filePath}`;
     }
 
@@ -158,8 +158,8 @@ export class LanguageModelGraphProvider implements GraphProvider {
         return generateBobGraph(workspaceRoot);
     }
 
-    async explainNode(filePath: string, _workspaceRoot: string): Promise<string> {
-        return runBobNodeExplanation(filePath, filePath);
+    async explainNode(filePath: string, _workspaceRoot: string, nodeId = filePath): Promise<string> {
+        return runBobNodeExplanation(nodeId, filePath);
     }
 }
 

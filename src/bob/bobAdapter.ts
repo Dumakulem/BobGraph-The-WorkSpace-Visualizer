@@ -90,7 +90,7 @@ export async function runBobAgentQuestion(
 ): Promise<BobAgentResponse> {
 	const trimmedQuestion = question.trim();
 	if (!trimmedQuestion) {
-		throw new BobAdapterError('Ask Bob a question before sending.');
+		throw new BobAdapterError('Ask the AI assistant a question before sending.');
 	}
 	if (trimmedQuestion.length > MAX_AGENT_QUESTION_CHARS) {
 		throw new BobAdapterError(
@@ -102,13 +102,13 @@ export async function runBobAgentQuestion(
 	try {
 		content = (await fs.readFile(filePath, 'utf8')).slice(0, MAX_EXPLANATION_CHARS);
 	} catch (error) {
-		throw new BobAdapterError(`Unable to read "${filePath}" for the Bob Agent: ${String(error)}`);
+		throw new BobAdapterError(`Unable to read "${filePath}" for the AI assistant: ${String(error)}`);
 	}
 
 	const model = await selectModel();
 	const modelName = model.name || model.family || 'Language Model';
 	onProgress?.(modelName);
-	const prompt = `You are Bob, a software engineering assistant helping a developer understand a codebase.
+	const prompt = `You are an AI software engineering assistant helping a developer understand a codebase.
 Answer the user's question about the selected node using the source context below.
 Be concise and practical. Do not modify files or claim to have run code.
 Node: ${nodeId}

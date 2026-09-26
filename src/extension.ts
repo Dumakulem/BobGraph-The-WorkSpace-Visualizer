@@ -279,7 +279,7 @@ async function sendNodeExplanation(
     try {
         const resolvedFilePath = resolveNodeFilePath(workspaceRoot, filePath);
         await panel.webview.postMessage({ type: 'explanationLoading', nodeId });
-        const summary = await getGraphProvider().explainNode(resolvedFilePath, workspaceRoot);
+        const summary = await getGraphProvider().explainNode(resolvedFilePath, workspaceRoot, nodeId);
         await panel.webview.postMessage({ type: 'nodeExplanation', nodeId, summary });
     } catch (error) {
         await panel.webview.postMessage({
@@ -358,7 +358,7 @@ async function sendAgentQuestion(
         await panel.webview.postMessage({
             type: 'agentError',
             nodeId,
-            message: 'Ask Bob a question before sending.',
+            message: 'Ask the AI assistant a question before sending.',
         });
         return;
     }
@@ -383,7 +383,7 @@ async function sendAgentQuestion(
         await panel.webview.postMessage({
             type: 'agentError',
             nodeId,
-            message: `Unable to ask Bob: ${error instanceof Error ? error.message : String(error)}`,
+            message: `Unable to ask the AI assistant: ${error instanceof Error ? error.message : String(error)}`,
         });
     }
 }
