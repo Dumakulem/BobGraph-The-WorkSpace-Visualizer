@@ -122,4 +122,9 @@ build/
 # DO NOT REMOVE ABOVE PATTERNS
 # Add project-specific patterns below
 # ============================================
-*.vsix
+
+# BobGraph project-specific
+# The bobgraph/ subdirectory is an empty Yo Code scaffold committed on the
+# Front branch — it is not part of the extension source and should not be
+# tracked or published.
+bobgraph/
