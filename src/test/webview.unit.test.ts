@@ -548,14 +548,15 @@ describe('opening a flowchart', () => {
         assert.ok(layout.idealEdgeLength >= 140, 'workspace edges need room between connected nodes');
     });
 
-    it('uses a horizontal flowchart layout', async () => {
+    it('uses a vertical flowchart layout without shrinking the initial view', async () => {
         const h = run();
         await settle();
         h.dbltap();
         await settle();
         const layout = h.cytoscapeOptions[h.cytoscapeOptions.length - 1]?.layout;
         assert.strictEqual(layout.name, 'dagre');
-        assert.strictEqual(layout.rankDir, 'LR');
+        assert.strictEqual(layout.rankDir, 'TB');
+        assert.strictEqual(layout.fit, false);
     });
 
     it('renders process nodes as green rectangles and decisions as diamonds', async () => {

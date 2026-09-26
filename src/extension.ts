@@ -366,8 +366,13 @@ async function sendAgentQuestion(
     try {
         const resolvedFilePath = resolveNodeFilePath(workspaceRoot, filePath);
         await panel.webview.postMessage({ type: 'agentLoading', nodeId });
-        const answer = await runBobAgentQuestion(nodeId, resolvedFilePath, question);
-        await panel.webview.postMessage({ type: 'agentAnswer', nodeId, answer });
+        const response = await runBobAgentQuestion(nodeId, resolvedFilePath, question);
+        await panel.webview.postMessage({
+            type: 'agentAnswer',
+            nodeId,
+            answer: response.answer,
+            modelName: response.modelName,
+        });
     } catch (error) {
         await panel.webview.postMessage({
             type: 'agentError',

@@ -290,7 +290,10 @@ let isLoading = false;
                 console.warn("dagre unavailable, falling back to cose for this view");
                 layoutType = 'cose';
             } else {
-                return { name: 'dagre', rankDir: 'LR', nodeSep: 80, rankSep: 120, animate: false };
+                // Do not fit a large flowchart into the whole canvas: that makes every
+                // node and label render at a tiny scale. Users can use Fit when they
+                // explicitly want the complete overview.
+                return { name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 100, fit: false, animate: false };
             }
         }
         if (layoutType === 'cose' && nodeCount > COSE_NODE_LIMIT) {
@@ -408,6 +411,11 @@ let isLoading = false;
             ],
             layout: layout
         });
+
+        if (layoutType === 'dagre' && typeof cy.zoom === 'function' && typeof cy.center === 'function') {
+            cy.zoom(1);
+            cy.center();
+        }
 
         // A webview panel can resize after Cytoscape has created its canvas (especially
         // while the sidebars and fonts settle). Keep the backing store aligned with the
@@ -809,6 +817,7 @@ let isLoading = false;
             }
         } else if (message && message.type === 'agentAnswer') {
             if (message.nodeId === selectedNodeId) {
+                setAgentName(message.modelName);
                 appendAgentMessage(message.answer, 'agent-answer');
                 setAgentBusy(false);
             }
@@ -848,6 +857,13 @@ let isLoading = false;
         const send = document.getElementById('agentSendBtn');
         if (input) input.placeholder = `Ask Bob about ${data.label ?? 'this node'}...`;
         if (send) send.disabled = false;
+    }
+
+    function setAgentName(modelName) {
+        const title = document.getElementById('agentTitle');
+        if (title && typeof modelName === 'string' && modelName.trim()) {
+            title.textContent = `${modelName.trim()} Agent`;
+        }
     }
 
     function appendAgentMessage(text, className) {

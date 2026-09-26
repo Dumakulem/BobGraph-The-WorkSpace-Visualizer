@@ -75,11 +75,16 @@ ${content}`;
 	return sendTextRequest(model, prompt);
 }
 
+export interface BobAgentResponse {
+	answer: string;
+	modelName: string;
+}
+
 export async function runBobAgentQuestion(
 	nodeId: string,
 	filePath: string,
 	question: string,
-): Promise<string> {
+): Promise<BobAgentResponse> {
 	const trimmedQuestion = question.trim();
 	if (!trimmedQuestion) {
 		throw new BobAdapterError('Ask Bob a question before sending.');
@@ -109,7 +114,10 @@ ${trimmedQuestion}
 
 Source context:
 ${content}`;
-	return sendTextRequest(model, prompt);
+	return {
+		answer: await sendTextRequest(model, prompt),
+		modelName: model.name || model.family || 'Language Model',
+	};
 }
 
 export async function checkLanguageModelConnection(): Promise<string> {

@@ -142,4 +142,11 @@ describe('webview markup', () => {
     it('does not imply the Bob Agent is connected', () => {
         assert.ok(!html.includes('Awaiting analysis request'), 'still implies a request is pending');
     });
+
+    it('provides a scrollable chat history and dynamic model title', () => {
+        assert.match(html, /id="agentTitle"/);
+        assert.match(readMedia('style.css'), /\.agent-body\s*\{[\s\S]*min-height:\s*0[\s\S]*overflow:\s*hidden/);
+        assert.match(readMedia('style.css'), /\.agent-messages\s*\{[\s\S]*overflow-y:\s*auto/);
+        assert.match(js, /modelName/);
+    });
 });

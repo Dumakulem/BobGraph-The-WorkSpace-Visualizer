@@ -486,6 +486,8 @@ body, html {
 
 .agent-body {
     flex-grow: 1;
+    min-height: 0;
+    overflow: hidden;
     padding: 24px 16px;
     display: flex;
     flex-direction: column;
