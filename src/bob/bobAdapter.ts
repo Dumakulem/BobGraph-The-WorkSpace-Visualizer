@@ -74,6 +74,16 @@ ${content}`;
 	return sendTextRequest(model, prompt);
 }
 
+export async function checkLanguageModelConnection(): Promise<string> {
+	const models = await vscode.lm.selectChatModels();
+	if (models.length === 0) {
+		throw new BobAdapterError(
+			'No language model is registered with VS Code. Install, enable, and sign in to an assistant that exposes the VS Code Language Model API.',
+		);
+	}
+	return models.map(model => `${model.name} (${model.vendor}/${model.family})`).join(', ');
+}
+
 async function inferEdgesFromModel(nodes: GraphNode[], snippets: SourceSnippet[]): Promise<GraphEdge[]> {
 	const model = await selectModel();
 	const prompt = `Analyze dependencies for BobGraph.
@@ -145,10 +155,12 @@ async function selectModel(): Promise<vscode.LanguageModelChat> {
 }
 
 async function sendTextRequest(model: vscode.LanguageModelChat, prompt: string): Promise<string> {
+	const cancellation = new vscode.CancellationTokenSource();
+	try {
 	const response = await model.sendRequest(
 		[vscode.LanguageModelChatMessage.User(prompt)],
 		{},
-		new vscode.CancellationTokenSource().token,
+		cancellation.token,
 	);
 	let text = '';
 	for await (const chunk of response.text) {
@@ -158,6 +170,9 @@ async function sendTextRequest(model: vscode.LanguageModelChat, prompt: string):
 		throw new BobAdapterError('Language model returned an empty response.');
 	}
 	return text.trim();
+	} finally {
+		cancellation.dispose();
+	}
 }
 
 function extractJson(text: string): string | undefined {

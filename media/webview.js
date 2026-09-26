@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let cy = null;
 let currentView = 'workspace';
 let currentFile = null;
+let currentFlowchartModel = null;
+let selectedNodeId = null;
 let isLoading = false;
     let workspaceModel = null;
     let pendingWorkspaceModel = null;
@@ -319,6 +321,9 @@ let isLoading = false;
         cy = cytoscape({
             container: document.getElementById('cy'),
             elements: elements,
+            // Keep Cytoscape's canvas aligned with the webview's physical pixels. Without
+            // this, high-DPI displays can render labels noticeably softer than surrounding UI.
+            pixelRatio: window.devicePixelRatio || 1,
             // Nodes are deliberately not draggable. Cytoscape suppresses the `tap` event
             // when a press turns into a drag, so a grabbable node makes "click a file and
             // nothing happens" a real possibility - and dragging buys nothing in a
@@ -333,13 +338,13 @@ let isLoading = false;
                     selector: 'node',
                     style: {
                         'label': 'data(label)',
+                        'font-family': 'Segoe UI, system-ui, sans-serif',
                         'text-outline-width': 0,
                         'text-outline-color': 'transparent',
-                        // text-max-width takes a pixel value, not the word "wrap" - passing
-                        // "wrap" makes Cytoscape log "style property is invalid" and silently
-                        // keep the default, so long labels then overflow the node.
-                        'text-wrap': 'wrap',
-                        'text-max-width': 120,
+                        // Ellipsis keeps long filenames inside every node shape, including
+                        // the narrower method/function nodes and diamond decisions.
+                        'text-wrap': 'ellipsis',
+                        'text-max-width': 100,
                         'transition-property': 'border-width, border-color, opacity, background-color',
                         'transition-duration': '150ms'
                     }
@@ -430,6 +435,7 @@ let isLoading = false;
         cy.on('tap', 'node', (evt) => {
             const node = evt.target;
             const data = node.data();
+            selectedNodeId = data.id;
             if (typeof node.addClass === 'function') {
                 node.addClass('pulse');
                 setTimeout(() => node.removeClass('pulse'), 300);
@@ -446,7 +452,11 @@ let isLoading = false;
             if (currentView !== 'workspace' || data.type !== 'file') {
                 return;
             }
-            renderFlowchart(data.flowchart ?? data.id, data.label);
+            if (data.flowchart) {
+                renderFlowchart(data.flowchart, data.label);
+            } else {
+                window.vscode?.postMessage({ type: 'requestFlowchart', nodeId: data.id });
+            }
         });
 
         // Cytoscape draws to a canvas, so hover affordance has to be set by hand.
@@ -590,6 +600,7 @@ let isLoading = false;
             const downgraded = initGraph(data, 'cose');
             currentView = 'workspace';
             currentFile = null;
+            currentFlowchartModel = null;
             setBreadcrumb(null);
             if (warnings.length > 0) {
                 console.warn('Workspace model needed repair:', warnings);
@@ -690,6 +701,12 @@ let isLoading = false;
 
         infoDiv.append(header, path, pseudocode);
 
+        const explanation = document.createElement('div');
+        explanation.id = 'nodeExplanation';
+        explanation.className = 'node-explanation';
+        explanation.textContent = 'Bob is preparing a summary...';
+        infoDiv.append(explanation);
+
         // Connections section — list every neighbour node so the user can see
         // how this file relates to the rest of the repository at a glance.
         if (neighbours.length > 0) {
@@ -716,7 +733,7 @@ let isLoading = false;
         }
 
         // For file nodes in workspace view, invite the user to double-click to open flowchart.
-        if (currentView === 'workspace' && data.type === 'file' && data.flowchart) {
+        if (currentView === 'workspace' && data.type === 'file') {
             const hint = document.createElement('div');
             hint.className = 'node-dblclick-hint';
             hint.textContent = '⇥  Double-click to open flowchart';
@@ -746,13 +763,29 @@ let isLoading = false;
         if (message && message.type === 'loadModel') {
             renderWorkspaceGraph(message.payload);
         } else if (message && message.type === 'explanationLoading') {
-            const summary = document.getElementById('summary');
-            if (summary) summary.textContent = 'Bob is preparing a summary...';
+            if (message.nodeId === selectedNodeId) {
+                const summary = document.getElementById('nodeExplanation');
+                if (summary) summary.textContent = 'Bob is preparing a summary...';
+            }
         } else if (message && message.type === 'nodeExplanation') {
-            const summary = document.getElementById('summary');
-            if (summary) summary.textContent = message.summary;
+            if (message.nodeId === selectedNodeId) {
+                const summary = document.getElementById('nodeExplanation');
+                if (summary) summary.textContent = message.summary;
+            }
+        } else if (message && message.type === 'flowchartData') {
+            const result = sanitizeModel(message.graph);
+            initGraph(result.model, 'dagre');
+            currentView = 'flowchart';
+            currentFile = { fileId: message.nodeId, fileName: message.fileName };
+            currentFlowchartModel = result.model;
+            setBreadcrumb(`Workspace > ${message.fileName}`);
         } else if (message && message.type === 'graphError') {
-            showLoadError(message.message, () => window.vscode?.postMessage({ type: 'requestGraph' }));
+            if (message.nodeId === selectedNodeId) {
+                const summary = document.getElementById('nodeExplanation');
+                if (summary) summary.textContent = message.message;
+            } else {
+                showLoadError(message.message, () => window.vscode?.postMessage({ type: 'requestGraph' }));
+            }
         }
     });
 
@@ -813,7 +846,11 @@ let isLoading = false;
             return;
         }
         if (currentView === 'flowchart' && currentFile) {
-            renderFlowchart(currentFile.fileId, currentFile.fileName);
+            if (currentFlowchartModel) {
+                initGraph(currentFlowchartModel, 'dagre');
+            } else {
+                renderFlowchart(currentFile.fileId, currentFile.fileName);
+            }
         } else {
             renderWorkspaceGraph();
             window.vscode?.postMessage({ type: 'requestGraph' });
