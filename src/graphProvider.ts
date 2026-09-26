@@ -9,7 +9,7 @@
  */
 
 import type { GraphData } from './bob/graphStore';
-import { generateBobGraph, runBobNodeExplanation } from './bob/bobAdapter';
+import { checkLanguageModelConnection, generateBobGraph, runBobNodeExplanation } from './bob/bobAdapter';
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
@@ -161,4 +161,8 @@ export class LanguageModelGraphProvider implements GraphProvider {
     async explainNode(filePath: string, _workspaceRoot: string): Promise<string> {
         return runBobNodeExplanation(filePath, filePath);
     }
+}
+
+export async function checkActiveLanguageModel(): Promise<string> {
+    return checkLanguageModelConnection();
 }

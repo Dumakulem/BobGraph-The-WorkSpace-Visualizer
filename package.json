@@ -40,6 +40,11 @@
       {
         "command": "bobai-visualizer.generateWorkspaceGraph",
         "title": "Generate Workspace Graph",
+        "category": "BOB AI"
+      },
+      {
+        "command": "bobai-visualizer.checkAiConnection",
+        "title": "Check AI Model Connection",
         "category": "BOB AI",
         "icon": "media/icon.png"
       }

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { resolveOpenFileRequest, OpenFileValidationError } from './openFile';
-import { getGraphProvider, LanguageModelGraphProvider, setGraphProvider } from './graphProvider';
+import { checkActiveLanguageModel, getGraphProvider, LanguageModelGraphProvider, setGraphProvider } from './graphProvider';
 import { readGraph, writeGraph, GraphFileNotFoundError, GraphValidationError } from './bob/graphStore';
 import { resolveNodeFilePath } from './bob/explainNode';
 
@@ -28,7 +28,7 @@ import { resolveNodeFilePath } from './bob/explainNode';
  * Set to undefined when the panel is disposed.
  */
 let activePanel: vscode.WebviewPanel | undefined;
-let activeGraphNodes = new Map<string, { filePath: string }>();
+let activeGraphNodes = new Map<string, { filePath: string; label: string }>();
 const GRAPH_PROVIDER_TIMEOUT_MS = 30_000;
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
@@ -146,6 +146,8 @@ export function activate(context: vscode.ExtensionContext) {
                         void sendCurrentGraph(panel);
                     } else if (message.type === 'nodeClicked' && typeof message.nodeId === 'string') {
                         void sendNodeExplanation(panel, message.nodeId);
+                    } else if (message.type === 'requestFlowchart' && typeof message.nodeId === 'string') {
+                        void sendNodeFlowchart(panel, message.nodeId);
                     }
                 },
                 undefined,
@@ -161,6 +163,18 @@ export function activate(context: vscode.ExtensionContext) {
                 void executeGenerateWorkspaceGraph();
             }
         )
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('bobai-visualizer.checkAiConnection', async () => {
+            try {
+                const models = await checkActiveLanguageModel();
+                void vscode.window.showInformationMessage(`BOB AI model connection is available: ${models}`);
+            } catch (error) {
+                void vscode.window.showErrorMessage(
+                    `BOB AI model connection is unavailable: ${error instanceof Error ? error.message : String(error)}`
+                );
+            }
+        })
     );
 }
 
@@ -239,10 +253,12 @@ async function sendNodeExplanation(panel: vscode.WebviewPanel, nodeId: string): 
     if (!workspaceRoot || !node) {
         await panel.webview.postMessage({
             type: 'graphError',
+            nodeId,
             message: `Unable to explain node "${nodeId}". Refresh the graph and try again.`,
         });
         return;
     }
+
     try {
         const filePath = resolveNodeFilePath(workspaceRoot, node.filePath);
         await panel.webview.postMessage({ type: 'explanationLoading', nodeId });
@@ -251,8 +267,55 @@ async function sendNodeExplanation(panel: vscode.WebviewPanel, nodeId: string): 
     } catch (error) {
         await panel.webview.postMessage({
             type: 'graphError',
+            nodeId,
             message: `Unable to explain node "${nodeId}": ${String(error)}`,
         });
+    }
+
+}
+
+async function sendNodeFlowchart(panel: vscode.WebviewPanel, nodeId: string): Promise<void> {
+        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const node = activeGraphNodes.get(nodeId);
+        if (!workspaceRoot || !node) {
+            await panel.webview.postMessage({
+                type: 'graphError',
+                message: `Unable to open flowchart for "${nodeId}". Refresh the graph and try again.`,
+            });
+            return;
+        }
+        try {
+            const filePath = resolveNodeFilePath(workspaceRoot, node.filePath);
+            const source = await fs.promises.readFile(filePath, 'utf8');
+            const lines = source.split(/\r?\n/).map((line, index) => ({
+                id: `line-${index + 1}`,
+                label: line.trim().slice(0, 80) || '(blank line)',
+                type: 'method',
+                filePath: node.filePath,
+                line: index + 1,
+            })).slice(0, 100);
+            const flowNodes = [
+                { id: 'start', label: 'Start', type: 'start_end', filePath: node.filePath, line: 1 },
+                ...lines,
+                { id: 'end', label: 'End', type: 'start_end', filePath: node.filePath, line: Math.max(1, lines.length) },
+            ];
+            const ids = flowNodes.map(flowNode => flowNode.id);
+            const edges = ids.slice(1).map((id, index) => ({
+                from: ids[index],
+                to: id,
+                relation: 'flow',
+            }));
+            await panel.webview.postMessage({
+                type: 'flowchartData',
+                nodeId,
+                fileName: node.label,
+                graph: { nodes: flowNodes, edges },
+            });
+        } catch (error) {
+            await panel.webview.postMessage({
+                type: 'graphError',
+                message: `Unable to open flowchart for "${nodeId}": ${String(error)}`,
+            });
     }
 }
 

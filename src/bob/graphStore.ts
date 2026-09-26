@@ -5,6 +5,9 @@ export type GraphNode = {
 	label: string;
 	type: string;
 	filePath: string;
+	line?: number;
+	pseudocode?: string;
+	flowchart?: string;
 };
 
 export type GraphEdge = {
@@ -174,7 +177,18 @@ function validateNode(value: unknown, index: number): GraphNode {
 		);
 	}
 
-	return { id, label, type, filePath };
+	const line = value['line'];
+	const pseudocode = value['pseudocode'];
+	const flowchart = value['flowchart'];
+	return {
+		id,
+		label,
+		type,
+		filePath,
+		...(typeof line === 'number' && Number.isInteger(line) && line >= 1 ? { line } : {}),
+		...(typeof pseudocode === 'string' ? { pseudocode } : {}),
+		...(typeof flowchart === 'string' && flowchart.trim() !== '' ? { flowchart } : {}),
+	};
 }
 
 function validateEdge(value: unknown, index: number, nodeIds: Set<string>): GraphEdge {

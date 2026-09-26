@@ -507,6 +507,7 @@ describe('opening a flowchart', () => {
             true,
             'autoungrabify not set: taps can be lost to drag gestures'
         );
+        assert.strictEqual(opts.pixelRatio, 1, 'Cytoscape should use the webview device pixel ratio');
     });
 
     it('wires a hover cursor, since Cytoscape is a canvas', async () => {
@@ -566,6 +567,9 @@ describe('graph palette', () => {
 
         const styleSheet = h.cytoscapeOptions[0]?.style;
         assert.ok(Array.isArray(styleSheet) && styleSheet.length > 0, 'no style sheet was passed to cytoscape');
+        const nodeStyle = styleSheet.find((rule: { selector?: string }) => rule.selector === 'node')?.style;
+        assert.strictEqual(nodeStyle?.['text-wrap'], 'ellipsis');
+        assert.strictEqual(nodeStyle?.['text-max-width'], 100);
 
         const invalid: string[] = [];
         for (const rule of styleSheet as Array<{ selector: string; style: Record<string, unknown> }>) {
