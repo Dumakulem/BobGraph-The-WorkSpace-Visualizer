@@ -153,7 +153,7 @@ Both views consume the same JSON shape. This is the contract with the backend.
     {
       "id": "file1",              // unique within this file
       "type": "file",             // file | class | method | function | start_end | decision
-      "name": "todo-app.js",      // display label
+      "label": "todo-app.js",     // display label
       "filePath": "src/todo-app.js",  // used by "Open in IDE"
       "line": 1,                  // 1-based, used by "Open in IDE"
       "pseudocode": "...",        // AI summary shown in the side panel
@@ -175,8 +175,8 @@ Both views consume the same JSON shape. This is the contract with the backend.
 - **`relation` values** map to edge styles: `contains`, `calls`, `imports`, `flow`. An
   unknown value silently gets the default grey style.
 - **`line` is 1-based** in JSON. The host subtracts 1 before seeking in the editor.
-- `name` becomes the Cytoscape `label`. Reading `data.name` in the webview returns
-  `undefined` - always read `data.label`.
+- `label` becomes the Cytoscape `label`. Older Bob payloads using `name` are accepted by the
+  webview for compatibility, but generated and stored graphs should use `label`.
 
 ---
 

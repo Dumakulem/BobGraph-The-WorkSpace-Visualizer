@@ -467,6 +467,32 @@ describe('opening a flowchart', () => {
         );
     });
 
+    it('includes file metadata when a flowchart node is clicked', async () => {
+        // Flowchart nodes are not in the host's workspace-node map. The metadata lets the
+        // host resolve the source file and request the same explanation as workspace nodes.
+        const h = run();
+        await settle();
+        h.tapNodeWith({
+            id: 'line-4',
+            label: 'const result = run()',
+            type: 'method',
+            filePath: 'src/todo-app.js',
+            line: 4,
+            pseudocode: ''
+        });
+        const click = h.postMessages.find((message) => message.type === 'nodeClicked');
+        assert.deepStrictEqual(
+            click,
+            {
+                type: 'nodeClicked',
+                nodeId: 'line-4',
+                filePath: 'src/todo-app.js',
+                label: 'const result = run()',
+                line: 4
+            }
+        );
+    });
+
     it('opens on a double click too', async () => {
         // Cytoscape fires dbltap separately from tap, so this needs its own handler.
         // People try double click first; relying on tap firing twice was not good enough.
@@ -507,8 +533,11 @@ describe('opening a flowchart', () => {
             true,
             'autoungrabify not set: taps can be lost to drag gestures'
         );
-        assert.strictEqual(opts.pixelRatio, 'auto', 'Cytoscape should use its actual backing-store ratio');
+        assert.strictEqual(opts.pixelRatio, 2, 'Cytoscape should use a stable high-resolution backing store');
         assert.strictEqual(opts.textureOnViewport, false, 'zoom should render labels instead of scaling a cached texture');
+        assert.strictEqual(opts.motionBlur, false, 'motion blur should never soften graph text');
+        assert.strictEqual(opts.hideEdgesOnViewport, false, 'edges should remain rendered during viewport changes');
+        assert.strictEqual(opts.hideLabelsOnViewport, false, 'labels should remain rendered during viewport changes');
     });
 
     it('wires a hover cursor, since Cytoscape is a canvas', async () => {
@@ -660,10 +689,6 @@ describe('malformed models from the backend', () => {
             nodes: [{ id: 'a', name: 'a.js', type: 'file' }],
             edges: [{ source: 'a', target: 'ghost', relation: 'imports' }]
         }, /does not exist/],
-        ['label instead of name is flagged', {
-            nodes: [{ id: 'a', label: 'a.js', type: 'file' }],
-            edges: []
-        }, /expects "name"/],
         ['unknown node type is flagged', {
             nodes: [{ id: 'a', name: 'a.js', type: 'quantum-widget' }],
             edges: []
@@ -680,6 +705,17 @@ describe('malformed models from the backend', () => {
             assert.match(shown, expected, `user was not told what was wrong: "${shown}"`);
         });
     }
+
+    it('accepts label as the canonical display field without a repair warning', async () => {
+        const h = run({
+            model: {
+                nodes: [{ id: 'a', label: 'a.js', type: 'file' }],
+                edges: []
+            }
+        });
+        await settle();
+        assert.strictEqual(h.els.nodeInfo.children.length, 0, 'canonical labels should not show repair warnings');
+    });
 
     it('drops the dangling edge instead of letting Cytoscape throw', async () => {
         const h = run({

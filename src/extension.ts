@@ -145,7 +145,11 @@ export function activate(context: vscode.ExtensionContext) {
                     } else if (message.type === 'requestGraph') {
                         void sendCurrentGraph(panel);
                     } else if (message.type === 'nodeClicked' && typeof message.nodeId === 'string') {
-                        void sendNodeExplanation(panel, message.nodeId);
+                        void sendNodeExplanation(
+                            panel,
+                            message.nodeId,
+                            typeof message.filePath === 'string' ? message.filePath : undefined
+                        );
                     } else if (message.type === 'requestFlowchart' && typeof message.nodeId === 'string') {
                         void sendNodeFlowchart(panel, message.nodeId);
                     }
@@ -247,10 +251,15 @@ async function sendCurrentGraph(panel: vscode.WebviewPanel): Promise<void> {
 
 }
 
-async function sendNodeExplanation(panel: vscode.WebviewPanel, nodeId: string): Promise<void> {
+async function sendNodeExplanation(
+    panel: vscode.WebviewPanel,
+    nodeId: string,
+    fallbackFilePath?: string
+): Promise<void> {
     const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     const node = activeGraphNodes.get(nodeId);
-    if (!workspaceRoot || !node) {
+    const filePath = node?.filePath ?? fallbackFilePath;
+    if (!workspaceRoot || !filePath) {
         await panel.webview.postMessage({
             type: 'graphError',
             nodeId,
@@ -260,9 +269,9 @@ async function sendNodeExplanation(panel: vscode.WebviewPanel, nodeId: string): 
     }
 
     try {
-        const filePath = resolveNodeFilePath(workspaceRoot, node.filePath);
+        const resolvedFilePath = resolveNodeFilePath(workspaceRoot, filePath);
         await panel.webview.postMessage({ type: 'explanationLoading', nodeId });
-        const summary = await getGraphProvider().explainNode(filePath, workspaceRoot);
+        const summary = await getGraphProvider().explainNode(resolvedFilePath, workspaceRoot);
         await panel.webview.postMessage({ type: 'nodeExplanation', nodeId, summary });
     } catch (error) {
         await panel.webview.postMessage({

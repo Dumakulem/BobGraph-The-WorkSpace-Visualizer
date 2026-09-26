@@ -66,11 +66,11 @@ let isLoading = false;
             if (!node || typeof node !== 'object') {
                 return;
             }
-            // The label is read from `name`, but accept `label` too: the two names differ
-            // across the model and Cytoscape, and a mismatch renders every node blank.
-            const label = node.name ?? node.label ?? node.id ?? `node-${index}`;
-            if (node.name === undefined && node.label !== undefined) {
-                warnings.push(`node "${label}" used "label"; the contract expects "name"`);
+            // `label` is the stored graph contract. Keep accepting `name` for older Bob
+            // payloads, but do not report the canonical label field as a repair.
+            const label = node.label ?? node.name ?? node.id ?? `node-${index}`;
+            if (node.label === undefined && node.name === undefined) {
+                warnings.push(`node "${label}" had no label or name; its id was used`);
             }
 
             let id = node.id;
@@ -321,10 +321,14 @@ let isLoading = false;
         cy = cytoscape({
             container: document.getElementById('cy'),
             elements: elements,
-            // Let Cytoscape read the renderer's actual backing-store ratio. This is more
-            // reliable than window.devicePixelRatio inside a VS Code webview.
-            pixelRatio: 'auto',
+            // Use a stable high-resolution backing store. VS Code webviews can report a
+            // transient device ratio while the panel is settling, which leaves canvas text
+            // blurry until a later repaint.
+            pixelRatio: 2,
             textureOnViewport: false,
+            motionBlur: false,
+            hideEdgesOnViewport: false,
+            hideLabelsOnViewport: false,
             // Nodes are deliberately not draggable. Cytoscape suppresses the `tap` event
             // when a press turns into a drag, so a grabbable node makes "click a file and
             // nothing happens" a real possibility - and dragging buys nothing in a
@@ -405,6 +409,20 @@ let isLoading = false;
             layout: layout
         });
 
+        // A webview panel can resize after Cytoscape has created its canvas (especially
+        // while the sidebars and fonts settle). Keep the backing store aligned with the
+        // actual container instead of relying on a later user interaction to repaint it.
+        const graphContainer = document.getElementById('cy');
+        if (typeof ResizeObserver === 'function' && graphContainer) {
+            const observer = new ResizeObserver(() => {
+                if (cy && cy.container() && cy.container()[0]) {
+                    cy.resize();
+                }
+            });
+            observer.observe(graphContainer);
+            cy.on('destroy', () => observer.disconnect());
+        }
+
         // Keep the graph from being panned so far off-screen that it disappears.
         // After every pan/zoom event, if the bounding box of all nodes has moved
         // completely outside the viewport, snap it back to fit.
@@ -444,7 +462,16 @@ let isLoading = false;
             // Collect neighbours from the live graph so we can show connections in the panel.
             const neighbours = node.neighbourhood('node').map(n => n.data());
             showNodeDetails(data, neighbours);
-            window.vscode?.postMessage({ type: 'nodeClicked', nodeId: data.id });
+            // Workspace nodes are resolved by the host from its active graph. Flowchart
+            // nodes are a separate graph, so include their file metadata as the fallback
+            // resolution source for explanations.
+            window.vscode?.postMessage({
+                type: 'nodeClicked',
+                nodeId: data.id,
+                filePath: data.filePath,
+                label: data.label,
+                line: data.line
+            });
         });
 
         // Double-tap: drill into the file's flowchart (workspace view only).
