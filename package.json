@@ -1,62 +1,127 @@
 {
-  "name": "bobgraph",
-  "displayName": "BobGraph",
-  "description": "Visualizes your codebase as an interactive onboarding diagram",
-  "version": "0.0.1",
-  "engines": {
-    "vscode": "^1.138.0"
-  },
+  "name": "bobai-visualizer",
+  "displayName": "BOB AI - Workspace Visualizer",
+  "publisher": "bob-ai-team",
+  "description": "VS Code extension that parses a project's code structure with IBM Bob 2.0 and renders it as an interactive graph, with click-to-view pseudocode for faster onboarding",
+  "license": "MIT",
+  "icon": "media/icon.png",
   "categories": [
+    "Visualization",
     "Other"
   ],
+  "keywords": [
+    "bob",
+    "code graph",
+    "visualization",
+    "onboarding",
+    "pseudocode",
+    "architecture"
+  ],
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.126.0"
+  },
   "activationEvents": [],
-  "main": "./dist/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "bobgraph.openVisualizer",
-        "title": "BobGraph: Open Workspace Visualizer"
+        "command": "bobai-visualizer.openVisualizer",
+        "title": "Open Workspace Visualizer",
+        "category": "BOB AI",
+        "icon": "media/icon.png"
       },
       {
-        "command": "bobgraph.generateGraph",
-        "title": "BobGraph: Generate Workspace Graph"
-      },
-      {
-        "command": "bobgraph.refresh",
-        "title": "BobGraph: Refresh Graph"
+        "command": "bobai-visualizer.showGettingStarted",
+        "title": "Show Getting Started",
+        "category": "BOB AI",
+        "icon": "media/icon.png"
       }
-    ]
+    ],
+    "walkthroughs": [
+      {
+        "id": "bobaiVisualizer.gettingStarted",
+        "title": "Get Started with BOB AI Visualizer",
+        "description": "Turn a codebase into an interactive graph and read AI pseudocode on click.",
+        "icon": "media/icon.png",
+        "featuredFor": [
+          "**"
+        ],
+        "steps": [
+          {
+            "id": "welcome",
+            "title": "Welcome",
+            "description": "What this extension does.",
+            "media": {
+              "markdown": "./media/walkthrough/01-welcome.md"
+            }
+          },
+          {
+            "id": "open",
+            "title": "Open the Visualizer",
+            "description": "Launch the graph panel.",
+            "media": {
+              "markdown": "./media/walkthrough/02-open.md"
+            },
+            "completionEvents": [
+              "onCommand:bobai-visualizer.openVisualizer"
+            ]
+          },
+          {
+            "id": "workspace",
+            "title": "Read the Workspace Graph",
+            "description": "One node per file, edges show imports.",
+            "media": {
+              "markdown": "./media/walkthrough/03-workspace.md"
+            }
+          },
+          {
+            "id": "drilldown",
+            "title": "Drill into a File",
+            "description": "Click a file node for its flowchart.",
+            "media": {
+              "markdown": "./media/walkthrough/04-drilldown.md"
+            }
+          },
+          {
+            "id": "pseudocode",
+            "title": "Read Pseudocode and Jump to Source",
+            "description": "Use the side panel and Open in IDE.",
+            "media": {
+              "markdown": "./media/walkthrough/05-pseudocode.md"
+            }
+          }
+        ]
+      }
+    ],
+    "welcomePage": {
+      "showOnStartup": "Walkthrough",
+      "contents": "Thanks for installing **BOB AI - Workspace Visualizer**!\n\nOnboarding a codebase usually means reading every file. This extension renders the project as a graph and puts an AI-written pseudocode summary of any node one click away.\n\nWork through the walkthrough on the left, or jump straight in:\n\n[Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)\n\nCurrently rendering bundled sample data. Live Bob 2.0 output is the next milestone - see `ARCHITECTURE.md` section 8."
+    }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
-    "compile": "webpack",
-    "watch": "webpack --watch",
-    "package": "webpack --mode production --devtool hidden-source-map",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "npm run test:unit",
+    "test:unit": "npm run compile && node -e \"const {readdirSync}=require('fs');const files=readdirSync('out/test').filter(f=>f.endsWith('.unit.test.js')).map(f=>'out/test/'+f);require('child_process').spawnSync(process.execPath,['--test',...files],{stdio:'inherit'})\"",
+    "test:integration": "vscode-test"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "24.x",
-    "@types/vscode": "^1.138.0",
+    "@types/vscode": "^1.126.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
-    "copy-webpack-plugin": "^14.0.0",
+    "cytoscape": "^3.26.0",
     "eslint": "^10.5.0",
-    "ts-loader": "^9.6.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.61.1",
-    "webpack": "^5.107.2",
-    "webpack-cli": "^7.0.3"
+    "typescript-eslint": "^8.61.1"
   },
   "overrides": {
     "diff": "^8.0.4",
     "serialize-javascript": "^7.0.6"
-  },
-  "dependencies": {
-    "vis-network": "^10.1.2"
   }
 }

@@ -125,6 +125,6 @@ build/
 
 # BobGraph project-specific
 # The bobgraph/ subdirectory is an empty Yo Code scaffold committed on the
-# Front branch — it is not part of the extension source and should not be
+# Front branch â€” it is not part of the extension source and should not be
 # tracked or published.
 bobgraph/
