@@ -72,11 +72,23 @@ describe('package manifest', () => {
         assert.ok(exists(pkg.icon), `icon file missing: ${pkg.icon}`);
     });
 
-    it('namespaces every contributed command', () => {
+    it('welcomePage copy does not say the visualizer uses bundled sample data', () => {
+        const contents: string = pkg.contributes.welcomePage?.contents ?? '';
+        assert.ok(
+            !contents.includes('bundled sample'),
+            'welcomePage still says it renders bundled sample data — update the copy'
+        );
+        assert.ok(
+            !contents.includes('next milestone'),
+            'welcomePage still references live generation as a future milestone'
+        );
+    });
+
+    it('namespaces every contributed command under bobai-visualizer. or bobgraph. (compat alias)', () => {
         for (const entry of contributes.commands) {
             assert.ok(
-                entry.command.startsWith('bobai-visualizer.'),
-                `${entry.command} is not namespaced`
+                entry.command.startsWith('bobai-visualizer.') || entry.command.startsWith('bobgraph.'),
+                `${entry.command} is not namespaced under bobai-visualizer. or bobgraph.`
             );
         }
     });

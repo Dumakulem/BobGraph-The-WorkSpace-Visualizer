@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 suite('Extension activation', () => {
     vscode.window.showInformationMessage('Running BOB AI extension tests.');
 
-    test('activates and registers both commands', async () => {
+    test('activates and registers all commands', async () => {
         const extension = vscode.extensions.getExtension('bob-ai-team.bobai-visualizer');
         assert.ok(extension, 'extension not found - is the publisher still "bob-ai-team"?');
 
@@ -19,7 +19,12 @@ suite('Extension activation', () => {
         const commands = await vscode.commands.getCommands(true);
         for (const id of [
             'bobai-visualizer.openVisualizer',
-            'bobai-visualizer.showGettingStarted'
+            'bobai-visualizer.showGettingStarted',
+            'bobai-visualizer.generateGraph',
+            'bobai-visualizer.refreshGraph',
+            'bobgraph.openVisualizer',
+            'bobgraph.generateGraph',
+            'bobgraph.refresh',
         ]) {
             assert.ok(commands.includes(id), `${id} is not registered`);
         }

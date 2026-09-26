@@ -33,4 +33,28 @@ suite('Extension Test Suite', () => {
 			'Expected command bobgraph.refresh to be registered',
 		);
 	});
+
+	test('bobai-visualizer.openVisualizer command is registered', async () => {
+		const commands = await vscode.commands.getCommands(true);
+		assert.ok(
+			commands.includes('bobai-visualizer.openVisualizer'),
+			'Expected command bobai-visualizer.openVisualizer to be registered',
+		);
+	});
+
+	test('bobai-visualizer.generateGraph command is registered', async () => {
+		const commands = await vscode.commands.getCommands(true);
+		assert.ok(
+			commands.includes('bobai-visualizer.generateGraph'),
+			'Expected command bobai-visualizer.generateGraph to be registered',
+		);
+	});
+
+	test('bobai-visualizer.refreshGraph command is registered', async () => {
+		const commands = await vscode.commands.getCommands(true);
+		assert.ok(
+			commands.includes('bobai-visualizer.refreshGraph'),
+			'Expected command bobai-visualizer.refreshGraph to be registered',
+		);
+	});
 });

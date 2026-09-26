@@ -1,6 +1,15 @@
 import * as vscode from 'vscode';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { writeGraph } from './graphStore';
-import { scanWorkspaceFiles } from './workspaceScanner';
+import { scanWorkspaceFiles, buildFileListSummary } from './workspaceScanner';
+import {
+	buildNodesFromScannedFiles,
+	inferEdgesDeterministic,
+} from './graphBuilder';
+import type { WorkspaceFile } from './workspaceScanner';
+import type { GraphData, GraphNode, GraphEdge } from './graphStore';
+import type { SourceSnippet } from './graphBuilder';
 
 // ─── LM selector ─────────────────────────────────────────────────────────────
 //
@@ -35,6 +44,11 @@ async function selectModel(): Promise<vscode.LanguageModelChat> {
  * produce a dependency graph, then validates and writes the result to
  * `.bobgraph/workspace-graph.json`.
  *
+ * The scanned file list is the authoritative source for graph nodes. Nodes are
+ * built deterministically from the scanner output before the model is called;
+ * the model is only used to infer dependency edges between those known nodes.
+ * Any edge referencing an unknown node ID is silently dropped.
+ *
  * Uses only the VS Code Language Model API — no API key, no HTTP request,
  * no hard dependency on any specific extension ID.
  *
@@ -49,10 +63,98 @@ export async function runBobGraphGeneration(workspaceRoot: string): Promise<void
 		);
 	}
 
+	// Build the authoritative node list from the scanner output. This is the
+	// single source of truth for node IDs and filePaths — the model never adds
+	// or removes nodes.
+	const nodes = buildNodesFromScannedFiles(files);
+	const nodeIdSet = new Set(nodes.map((n) => n.id));
+
+	// Collect source content for files that support import analysis (JS/TS family
+	// and Python). We read a bounded sample so the prompt stays within context.
+	const sourceSnippets = await collectSourceSnippets(workspaceRoot, files);
+
+	// Ask the model only for dependency edges between the known node IDs.
+	// If no model is available, fall back to deterministic import analysis only.
+	let edges: GraphEdge[] = [];
+	try {
+		edges = await inferEdgesFromModel(nodes, sourceSnippets);
+	} catch {
+		// Model unavailable or returned unusable output — use deterministic analysis.
+		edges = inferEdgesDeterministic(files, sourceSnippets, nodeIdSet);
+	}
+
+	// Validate that every edge endpoint refers to a node we actually generated.
+	// Drop dangling edges rather than letting them cause validation failures.
+	const safeEdges = edges.filter(
+		(e) => nodeIdSet.has(e.from) && nodeIdSet.has(e.to),
+	);
+
+	// Deduplicate edges (same from+to+relation may appear from both paths).
+	const seenEdges = new Set<string>();
+	const dedupedEdges = safeEdges.filter((e) => {
+		const key = `${e.from}→${e.to}→${e.relation}`;
+		if (seenEdges.has(key)) {
+			return false;
+		}
+		seenEdges.add(key);
+		return true;
+	});
+
+	const graph: GraphData = { nodes, edges: dedupedEdges };
+
+	// writeGraph validates the schema before writing — throws GraphValidationError
+	// if the data does not match the GraphData contract.
+	await writeGraph(workspaceRoot, graph);
+}
+
+// ─── Source snippet collection ────────────────────────────────────────────────
+
+/** Maximum characters read from a single file for the edge-inference prompt. */
+const MAX_SNIPPET_CHARS = 2000;
+
+/** Extensions we attempt to read for import analysis. */
+const IMPORT_ANALYSIS_EXTS = new Set([
+	'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'py',
+]);
+
+async function collectSourceSnippets(
+	workspaceRoot: string,
+	files: WorkspaceFile[],
+): Promise<SourceSnippet[]> {
+	const snippets: SourceSnippet[] = [];
+	for (const f of files) {
+		if (!IMPORT_ANALYSIS_EXTS.has(f.ext)) {
+			continue;
+		}
+		try {
+			const absolute = path.join(workspaceRoot, f.relativePath);
+			const raw = await fs.readFile(absolute, 'utf8');
+			snippets.push({
+				relativePath: f.relativePath,
+				content: raw.length > MAX_SNIPPET_CHARS ? raw.slice(0, MAX_SNIPPET_CHARS) : raw,
+			});
+		} catch {
+			// Unreadable file — skip silently.
+		}
+	}
+	return snippets;
+}
+
+// ─── Model-based edge inference ───────────────────────────────────────────────
+
+/**
+ * Asks the language model to infer dependency edges between the supplied nodes,
+ * given source snippets as evidence. Returns only edges whose endpoints exist
+ * in nodeIds; dangling edges are dropped by the caller.
+ */
+async function inferEdgesFromModel(
+	nodes: GraphNode[],
+	snippets: SourceSnippet[],
+): Promise<GraphEdge[]> {
 	const model = await selectModel();
 	const token = new vscode.CancellationTokenSource().token;
 
-	const prompt = buildGraphPrompt(workspaceRoot);
+	const prompt = buildEdgePrompt(nodes, snippets);
 	const messages = [vscode.LanguageModelChatMessage.User(prompt)];
 
 	let rawResponse = '';
@@ -61,12 +163,10 @@ export async function runBobGraphGeneration(workspaceRoot: string): Promise<void
 		rawResponse += chunk;
 	}
 
-	// Extract the JSON object from the response. The LM may wrap it in a
-	// markdown code fence or add prose — strip everything outside the braces.
 	const jsonText = extractJson(rawResponse);
 	if (!jsonText) {
 		throw new BobAdapterError(
-			'The language model did not return a valid JSON graph.\n' +
+			'The language model did not return a valid JSON edges array.\n' +
 			'Raw response (first 500 chars): ' + rawResponse.slice(0, 500),
 		);
 	}
@@ -81,9 +181,27 @@ export async function runBobGraphGeneration(workspaceRoot: string): Promise<void
 		);
 	}
 
-	// writeGraph validates the schema before writing — throws GraphValidationError
-	// if the parsed data does not match the GraphData contract.
-	await writeGraph(workspaceRoot, parsed);
+	// Accept either { edges: [...] } or a bare array.
+	const rawEdges = Array.isArray(parsed)
+		? parsed
+		: (isObject(parsed) && Array.isArray(parsed['edges']) ? parsed['edges'] : null);
+
+	if (!rawEdges) {
+		throw new BobAdapterError('Model response did not contain a valid edges array.');
+	}
+
+	const edges: GraphEdge[] = [];
+	for (const e of rawEdges) {
+		if (
+			isObject(e) &&
+			typeof e['from'] === 'string' && e['from'].trim() !== '' &&
+			typeof e['to'] === 'string' && e['to'].trim() !== '' &&
+			typeof e['relation'] === 'string' && e['relation'].trim() !== ''
+		) {
+			edges.push({ from: e['from'] as string, to: e['to'] as string, relation: e['relation'] as string });
+		}
+	}
+	return edges;
 }
 
 // ─── Node explanation ─────────────────────────────────────────────────────────
@@ -142,50 +260,38 @@ export async function runBobNodeExplanation(
 
 // ─── Prompt builders ──────────────────────────────────────────────────────────
 
-function buildGraphPrompt(workspacePath: string): string {
-	return `You are generating structured workspace data for BobGraph.
+function buildEdgePrompt(nodes: GraphNode[], snippets: SourceSnippet[]): string {
+	const nodeList = nodes.map((n) => n.id).join('\n');
+	const snippetText = snippets
+		.map((s) => `--- ${s.relativePath} ---\n${s.content}`)
+		.join('\n\n');
 
-Analyze the workspace at:
-${workspacePath}
+	return `You are analysing a workspace dependency graph for BobGraph.
 
-Build a dependency graph of the source files.
+The following node IDs represent the complete set of source files. Do NOT invent additional nodes.
 
-Return ONLY valid JSON. Do not include Markdown fences, explanations, comments, or additional text.
+KNOWN NODE IDs (one per line):
+${nodeList}
 
-The JSON must match this exact schema:
+Below are source file excerpts to help you identify imports and dependencies.
 
-{
-  "nodes": [
-    {
-      "id": "string",
-      "label": "string",
-      "type": "string",
-      "filePath": "string"
-    }
-  ],
-  "edges": [
-    {
-      "from": "string",
-      "to": "string",
-      "relation": "string"
-    }
-  ]
-}
+SOURCE EXCERPTS:
+${snippetText}
+
+Your task: return ONLY a JSON array of dependency edges between the known nodes.
+Each edge must have exactly these three fields:
+  "from": the node ID of the file that imports or depends on the other
+  "to":   the node ID of the file being imported or depended upon
+  "relation": a short string describing the relationship, e.g. "imports"
 
 Rules:
+1. Only emit edges whose "from" and "to" values are node IDs from the KNOWN NODE IDs list above.
+2. Do not invent files or use paths not present in the list.
+3. If there are no detected dependencies, return an empty array: []
+4. Return ONLY a JSON array. No markdown fences, no prose, no extra fields.
 
-1. Create one node for each relevant source file.
-2. "id" must be unique and should normally be the normalized relative file path.
-3. "label" should be the file name shown in the graph.
-4. "type" should normally be "file".
-5. "filePath" must be a relative path from the workspace root.
-6. Do not use absolute paths.
-7. Do not use paths containing "..".
-8. Create an edge when one file imports, requires, references, or depends on another.
-9. Every edge "from" and "to" value must match an existing node "id".
-10. Do not invent files that do not exist.
-11. If there are no relationships, return an empty "edges" array.
-12. Return the complete graph, not a summary.
+Example output:
+[{"from":"src/a.ts","to":"src/b.ts","relation":"imports"}]
 `;
 }
 
@@ -204,8 +310,8 @@ ${content}`;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Extracts the outermost JSON object from a string that may contain surrounding
- * prose or markdown code fences.
+ * Extracts the outermost JSON object or array from a string that may contain
+ * surrounding prose or markdown code fences.
  */
 function extractJson(text: string): string | null {
 	// Strip markdown code fences if present.
@@ -214,13 +320,24 @@ function extractJson(text: string): string | null {
 		return fenceMatch[1].trim();
 	}
 
-	// Find the first '{' and the matching last '}' in the raw text.
+	// Try array first (our edge prompt asks for an array).
+	const arrStart = text.indexOf('[');
+	const arrEnd = text.lastIndexOf(']');
+	if (arrStart !== -1 && arrEnd !== -1 && arrEnd > arrStart) {
+		return text.slice(arrStart, arrEnd + 1);
+	}
+
+	// Fall back to object.
 	const start = text.indexOf('{');
 	const end = text.lastIndexOf('}');
 	if (start === -1 || end === -1 || end <= start) {
 		return null;
 	}
 	return text.slice(start, end + 1);
+}
+
+function isObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // ─── Error types ─────────────────────────────────────────────────────────────
@@ -242,3 +359,7 @@ export class BobAdapterNotImplementedError extends BobAdapterError {
 		this.name = 'BobAdapterNotImplementedError';
 	}
 }
+
+// Re-export pure functions and types for use in tests and other modules.
+export { buildNodesFromScannedFiles, inferEdgesDeterministic, buildFileListSummary };
+export type { SourceSnippet };

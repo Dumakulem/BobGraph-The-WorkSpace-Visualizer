@@ -6,8 +6,8 @@ Click the link below — or run **BOB AI: Open Workspace Visualizer** from the C
 
 [Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)
 
-The panel opens beside your editor and loads the workspace graph automatically.
+The panel opens beside your editor and loads your workspace graph automatically.
 
-> **Note:** The graph currently renders bundled sample data. Live output from the Bob 2.0 backend is the next milestone.
+If no graph has been generated yet, you will be prompted to run **BOB AI: Generate Workspace Graph** first.
 
 If the panel opens blank, use **Developer: Open Webview Developer Tools** and check the console — any load errors are reported there.

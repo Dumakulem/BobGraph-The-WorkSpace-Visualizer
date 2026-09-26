@@ -38,19 +38,29 @@
         "icon": "media/icon.png"
       },
       {
+        "command": "bobai-visualizer.generateGraph",
+        "title": "Generate Workspace Graph",
+        "category": "BOB AI"
+      },
+      {
+        "command": "bobai-visualizer.refreshGraph",
+        "title": "Refresh Graph",
+        "category": "BOB AI"
+      },
+      {
         "command": "bobgraph.openVisualizer",
-        "title": "BobGraph: Open Workspace Visualizer",
-        "category": "BobGraph"
+        "title": "Open Workspace Visualizer",
+        "category": "BOB AI"
       },
       {
         "command": "bobgraph.generateGraph",
-        "title": "BobGraph: Generate Workspace Graph",
-        "category": "BobGraph"
+        "title": "Generate Workspace Graph",
+        "category": "BOB AI"
       },
       {
         "command": "bobgraph.refresh",
-        "title": "BobGraph: Refresh Graph",
-        "category": "BobGraph"
+        "title": "Refresh Graph",
+        "category": "BOB AI"
       }
     ],
     "walkthroughs": [
@@ -111,7 +121,7 @@
     ],
     "welcomePage": {
       "showOnStartup": "Walkthrough",
-      "contents": "Thanks for installing **BOB AI - Workspace Visualizer**!\n\nOnboarding a codebase usually means reading every file. This extension renders the project as a graph and puts an AI-written pseudocode summary of any node one click away.\n\nWork through the walkthrough on the left, or jump straight in:\n\n[Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)\n\nCurrently rendering bundled sample data. Live Bob 2.0 output is the next milestone - see `ARCHITECTURE.md` section 8."
+      "contents": "Thanks for installing **BOB AI - Workspace Visualizer**!\n\nOnboarding a codebase usually means reading every file. This extension renders your actual workspace as an interactive graph and puts an AI-written summary of any node one click away.\n\nWork through the walkthrough on the left, or jump straight in:\n\n[Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)\n\n[Generate Workspace Graph](command:bobai-visualizer.generateGraph)"
     }
   },
   "scripts": {
