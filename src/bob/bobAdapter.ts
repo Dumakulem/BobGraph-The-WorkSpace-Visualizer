@@ -9,6 +9,7 @@ import type { GraphData, GraphEdge, GraphNode } from './graphStore';
 
 const MAX_SNIPPET_CHARS = 2000;
 const MAX_EXPLANATION_CHARS = 8000;
+const MAX_AGENT_QUESTION_CHARS = 4000;
 
 export class BobAdapterError extends Error {
 	constructor(message: string) {
@@ -70,6 +71,43 @@ Node: ${nodeId}
 File: ${filePath}
 
 File contents:
+${content}`;
+	return sendTextRequest(model, prompt);
+}
+
+export async function runBobAgentQuestion(
+	nodeId: string,
+	filePath: string,
+	question: string,
+): Promise<string> {
+	const trimmedQuestion = question.trim();
+	if (!trimmedQuestion) {
+		throw new BobAdapterError('Ask Bob a question before sending.');
+	}
+	if (trimmedQuestion.length > MAX_AGENT_QUESTION_CHARS) {
+		throw new BobAdapterError(
+			`Questions must be ${MAX_AGENT_QUESTION_CHARS} characters or fewer.`,
+		);
+	}
+
+	let content: string;
+	try {
+		content = (await fs.readFile(filePath, 'utf8')).slice(0, MAX_EXPLANATION_CHARS);
+	} catch (error) {
+		throw new BobAdapterError(`Unable to read "${filePath}" for the Bob Agent: ${String(error)}`);
+	}
+
+	const model = await selectModel();
+	const prompt = `You are Bob, a software engineering assistant helping a developer understand a codebase.
+Answer the user's question about the selected node using the source context below.
+Be concise and practical. Do not modify files or claim to have run code.
+Node: ${nodeId}
+File: ${filePath}
+
+User question:
+${trimmedQuestion}
+
+Source context:
 ${content}`;
 	return sendTextRequest(model, prompt);
 }

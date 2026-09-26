@@ -22,6 +22,7 @@ let currentView = 'workspace';
 let currentFile = null;
 let currentFlowchartModel = null;
 let selectedNodeId = null;
+let selectedNodeData = null;
 let isLoading = false;
     let workspaceModel = null;
     let pendingWorkspaceModel = null;
@@ -183,14 +184,14 @@ let isLoading = false;
             'text-halign': 'center'
         },
         method: {
-            'background-color': themeColor('--accent-method-bg', '#1a3040'),
-            'border-color': '#7dd3fc',
+            'background-color': themeColor('--accent-function-bg', '#14532d'),
+            'border-color': '#4ade80',
             'border-width': 1,
-            shape: 'ellipse',
-            width: 110,
-            height: 44,
+            shape: 'rectangle',
+            width: 130,
+            height: 50,
             color: '#ffffff',
-            'font-size': 11,
+            'font-size': 12,
             'text-valign': 'center',
             'text-halign': 'center'
         },
@@ -198,11 +199,11 @@ let isLoading = false;
             'background-color': themeColor('--accent-function-bg', '#14532d'),
             'border-color': '#4ade80',
             'border-width': 1,
-            shape: 'ellipse',
-            width: 110,
-            height: 44,
+            shape: 'rectangle',
+            width: 130,
+            height: 50,
             color: '#ffffff',
-            'font-size': 11,
+            'font-size': 12,
             'text-valign': 'center',
             'text-halign': 'center'
         },
@@ -289,7 +290,7 @@ let isLoading = false;
                 console.warn("dagre unavailable, falling back to cose for this view");
                 layoutType = 'cose';
             } else {
-                return { name: 'dagre', rankDir: 'TB', nodeSep: 50, rankSep: 100, animate: false };
+                return { name: 'dagre', rankDir: 'LR', nodeSep: 80, rankSep: 120, animate: false };
             }
         }
         if (layoutType === 'cose' && nodeCount > COSE_NODE_LIMIT) {
@@ -299,10 +300,11 @@ let isLoading = false;
         return {
             name: 'cose',
             padding: 50,
-            nodeOverlap: 20,
+            nodeOverlap: 30,
+            nodeRepulsion: 9000,
             componentSpacing: 120,
-            randomize: false,
-            idealEdgeLength: 100,
+            randomize: true,
+            idealEdgeLength: 140,
             animate: false
         };
     }
@@ -329,12 +331,10 @@ let isLoading = false;
             motionBlur: false,
             hideEdgesOnViewport: false,
             hideLabelsOnViewport: false,
-            // Nodes are deliberately not draggable. Cytoscape suppresses the `tap` event
-            // when a press turns into a drag, so a grabbable node makes "click a file and
-            // nothing happens" a real possibility - and dragging buys nothing in a
-            // read-only viewer. Panning the background is unaffected: that is container
-            // level, not node level.
-            autoungrabify: true,
+            // Allow users to reposition nodes after the initial layout. Cytoscape still
+            // emits tap events for clicks that do not move, so selection and drill-down
+            // remain available alongside dragging.
+            autoungrabify: false,
             // Hard zoom bounds: user cannot scroll past these levels.
             minZoom: 0.15,
             maxZoom: 3,
@@ -455,6 +455,8 @@ let isLoading = false;
             const node = evt.target;
             const data = node.data();
             selectedNodeId = data.id;
+            selectedNodeData = data;
+            updateAgentContext(data);
             if (typeof node.addClass === 'function') {
                 node.addClass('pulse');
                 setTimeout(() => node.removeClass('pulse'), 300);
@@ -800,6 +802,21 @@ let isLoading = false;
                 const summary = document.getElementById('nodeExplanation');
                 if (summary) summary.textContent = message.summary;
             }
+        } else if (message && message.type === 'agentLoading') {
+            if (message.nodeId === selectedNodeId) {
+                appendAgentMessage('Bob is thinking...', 'agent-status');
+                setAgentBusy(true);
+            }
+        } else if (message && message.type === 'agentAnswer') {
+            if (message.nodeId === selectedNodeId) {
+                appendAgentMessage(message.answer, 'agent-answer');
+                setAgentBusy(false);
+            }
+        } else if (message && message.type === 'agentError') {
+            if (message.nodeId === selectedNodeId) {
+                appendAgentMessage(message.message, 'agent-error');
+                setAgentBusy(false);
+            }
         } else if (message && message.type === 'flowchartData') {
             const result = sanitizeModel(message.graph);
             initGraph(result.model, 'dagre');
@@ -824,6 +841,50 @@ let isLoading = false;
         if (btn instanceof HTMLElement) {
             openFile(btn.dataset.filePath, Number(btn.dataset.line));
         }
+    });
+
+    function updateAgentContext(data) {
+        const input = document.getElementById('agentInput');
+        const send = document.getElementById('agentSendBtn');
+        if (input) input.placeholder = `Ask Bob about ${data.label ?? 'this node'}...`;
+        if (send) send.disabled = false;
+    }
+
+    function appendAgentMessage(text, className) {
+        const messages = document.getElementById('agentMessages');
+        if (!messages) return;
+        const empty = messages.querySelector('.agent-empty');
+        if (empty) empty.remove();
+        const message = document.createElement('div');
+        message.className = `agent-message ${className}`;
+        message.textContent = text;
+        messages.append(message);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function setAgentBusy(busy) {
+        const input = document.getElementById('agentInput');
+        const send = document.getElementById('agentSendBtn');
+        if (input) input.disabled = busy;
+        if (send) {
+            send.disabled = busy || !selectedNodeData;
+            send.textContent = busy ? 'Thinking...' : 'Ask Bob';
+        }
+    }
+
+    document.getElementById('agentForm')?.addEventListener('submit', event => {
+        event.preventDefault();
+        const input = document.getElementById('agentInput');
+        const question = input?.value.trim() ?? '';
+        if (!question || !selectedNodeData || !selectedNodeId) return;
+        appendAgentMessage(question, 'agent-question');
+        input.value = '';
+        window.vscode?.postMessage({
+            type: 'agentQuestion',
+            nodeId: selectedNodeId,
+            filePath: selectedNodeData.filePath,
+            question
+        });
     });
 
     document.getElementById('backBtn')?.addEventListener('click', () => {

@@ -482,7 +482,7 @@ describe('opening a flowchart', () => {
         });
         const click = h.postMessages.find((message) => message.type === 'nodeClicked');
         assert.deepStrictEqual(
-            click,
+            click && { ...click },
             {
                 type: 'nodeClicked',
                 nodeId: 'line-4',
@@ -522,22 +522,55 @@ describe('opening a flowchart', () => {
         );
     });
 
-    it('makes nodes ungrabbable so a press is never swallowed as a drag', async () => {
-        // Cytoscape suppresses `tap` when a press becomes a drag. With physics layouts on
-        // grabbable nodes, that is exactly "I clicked the file and nothing happened".
+    it('allows nodes to be repositioned without removing click handlers', async () => {
         const h = run();
         await settle();
         const opts = h.cytoscapeOptions[0];
         assert.strictEqual(
             opts.autoungrabify,
-            true,
-            'autoungrabify not set: taps can be lost to drag gestures'
+            false,
+            'nodes must be grabbable so users can reposition them'
         );
         assert.strictEqual(opts.pixelRatio, 2, 'Cytoscape should use a stable high-resolution backing store');
         assert.strictEqual(opts.textureOnViewport, false, 'zoom should render labels instead of scaling a cached texture');
         assert.strictEqual(opts.motionBlur, false, 'motion blur should never soften graph text');
         assert.strictEqual(opts.hideEdgesOnViewport, false, 'edges should remain rendered during viewport changes');
         assert.strictEqual(opts.hideLabelsOnViewport, false, 'labels should remain rendered during viewport changes');
+    });
+
+    it('configures workspace physics to repel nearby nodes', async () => {
+        const h = run();
+        await settle();
+        const layout = h.cytoscapeOptions[0]?.layout;
+        assert.strictEqual(layout.name, 'cose');
+        assert.ok(layout.nodeRepulsion >= 9000, 'workspace nodes need a strong repulsion field');
+        assert.ok(layout.nodeOverlap >= 30, 'workspace layout should reserve space around nodes');
+        assert.ok(layout.idealEdgeLength >= 140, 'workspace edges need room between connected nodes');
+    });
+
+    it('uses a horizontal flowchart layout', async () => {
+        const h = run();
+        await settle();
+        h.dbltap();
+        await settle();
+        const layout = h.cytoscapeOptions[h.cytoscapeOptions.length - 1]?.layout;
+        assert.strictEqual(layout.name, 'dagre');
+        assert.strictEqual(layout.rankDir, 'LR');
+    });
+
+    it('renders process nodes as green rectangles and decisions as diamonds', async () => {
+        const h = run({ model: workspaceWithEveryType() });
+        await settle();
+        const styles = new Map(
+            h.lastStyle
+                .filter((rule: any) => /^node\[type="/.test(rule.selector ?? ''))
+                .map((rule: any) => [rule.selector, rule.style])
+        );
+        assert.strictEqual(styles.get('node[type="method"]')?.shape, 'rectangle');
+        assert.strictEqual(styles.get('node[type="function"]')?.shape, 'rectangle');
+        assert.strictEqual(styles.get('node[type="method"]')?.['background-color'], '#14532d');
+        assert.strictEqual(styles.get('node[type="function"]')?.['background-color'], '#14532d');
+        assert.strictEqual(styles.get('node[type="decision"]')?.shape, 'diamond');
     });
 
     it('wires a hover cursor, since Cytoscape is a canvas', async () => {

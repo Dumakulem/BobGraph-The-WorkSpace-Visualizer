@@ -88,12 +88,18 @@
                 <div class="panel-section-header">
                     <h2 class="panel-section-title">Bob Agent</h2>
                 </div>
-                <div class="chat-placeholder">
+                <div class="agent-body">
                     <div class="agent-brand">
                         <img src="{{iconUri}}" alt="BOB AI" class="brand-icon-lg">
                     </div>
-                    <strong>Not connected</strong>
-                    <span>Ask questions about any node once the Bob 2.0 backend is wired up.</span>
+                    <div id="agentMessages" class="agent-messages" aria-live="polite">
+                        <div class="agent-empty">Select a node to ask Bob about its code.</div>
+                    </div>
+                    <form id="agentForm" class="agent-form">
+                        <textarea id="agentInput" rows="2" maxlength="4000"
+                            placeholder="Ask Bob about the selected node..." aria-label="Ask Bob"></textarea>
+                        <button id="agentSendBtn" class="btn btn-open-ide" type="submit" disabled>Ask Bob</button>
+                    </form>
                 </div>
             </div>
 

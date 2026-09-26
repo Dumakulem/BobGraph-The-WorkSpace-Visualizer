@@ -290,6 +290,12 @@ body, html {
     border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border-subtle));
     display: flex;
     flex-direction: column;
+    min-height: 0;
+}
+
+.sidebar-right > .panel-section:first-child {
+    flex: 0 1 55%;
+    overflow: hidden;
 }
 
 .panel-section-grow {
@@ -332,6 +338,7 @@ body, html {
 .panel-body {
     padding: 14px 16px;
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
 }
 
@@ -477,7 +484,6 @@ body, html {
 
 /* ─── Bob Agent Section ───────────────────────────── */
 
-.chat-placeholder,
 .agent-body {
     flex-grow: 1;
     padding: 24px 16px;
@@ -489,6 +495,77 @@ body, html {
     color: var(--vscode-descriptionForeground, var(--text-muted));
     font-size: 12px;
     text-align: center;
+}
+
+.agent-messages {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
+.agent-empty {
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-size: 12px;
+    text-align: center;
+    padding: 16px 8px;
+}
+
+.agent-message {
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.agent-question {
+    background: rgba(29, 111, 216, 0.18);
+    border: 1px solid rgba(29, 111, 216, 0.35);
+}
+
+.agent-answer {
+    background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.04));
+    border-left: 3px solid var(--cyan-dim);
+}
+
+.agent-status {
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-style: italic;
+}
+
+.agent-error {
+    color: var(--vscode-errorForeground, var(--red));
+}
+
+.agent-form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+}
+
+#agentInput {
+    width: 100%;
+    resize: vertical;
+    min-height: 52px;
+    max-height: 140px;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-input-border, var(--border));
+    border-radius: var(--radius-sm);
+    background: var(--vscode-input-background, var(--bg-card));
+    color: var(--vscode-input-foreground, var(--text-primary));
+    font: inherit;
+}
+
+#agentInput:focus {
+    outline: 1px solid var(--vscode-focusBorder, var(--cyan));
 }
 
 .agent-icon {

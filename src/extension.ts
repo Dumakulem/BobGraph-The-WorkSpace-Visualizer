@@ -5,6 +5,7 @@ import { resolveOpenFileRequest, OpenFileValidationError } from './openFile';
 import { checkActiveLanguageModel, getGraphProvider, LanguageModelGraphProvider, setGraphProvider } from './graphProvider';
 import { readGraph, writeGraph, GraphFileNotFoundError, GraphValidationError } from './bob/graphStore';
 import { resolveNodeFilePath } from './bob/explainNode';
+import { runBobAgentQuestion } from './bob/bobAdapter';
 
 /**
  * Extension host. Owns the webview panel, asset URI injection, and file-opening requests.
@@ -152,6 +153,13 @@ export function activate(context: vscode.ExtensionContext) {
                         );
                     } else if (message.type === 'requestFlowchart' && typeof message.nodeId === 'string') {
                         void sendNodeFlowchart(panel, message.nodeId);
+                    } else if (message.type === 'agentQuestion' && typeof message.nodeId === 'string') {
+                        void sendAgentQuestion(
+                            panel,
+                            message.nodeId,
+                            typeof message.filePath === 'string' ? message.filePath : undefined,
+                            message.question,
+                        );
                     }
                 },
                 undefined,
@@ -293,6 +301,7 @@ async function sendNodeFlowchart(panel: vscode.WebviewPanel, nodeId: string): Pr
             });
             return;
         }
+
         try {
             const filePath = resolveNodeFilePath(workspaceRoot, node.filePath);
             const source = await fs.promises.readFile(filePath, 'utf8');
@@ -325,6 +334,46 @@ async function sendNodeFlowchart(panel: vscode.WebviewPanel, nodeId: string): Pr
                 type: 'graphError',
                 message: `Unable to open flowchart for "${nodeId}": ${String(error)}`,
             });
+    }
+}
+
+async function sendAgentQuestion(
+    panel: vscode.WebviewPanel,
+    nodeId: string,
+    fallbackFilePath: string | undefined,
+    question: unknown,
+): Promise<void> {
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    const node = activeGraphNodes.get(nodeId);
+    const filePath = node?.filePath ?? fallbackFilePath;
+    if (!workspaceRoot || !filePath) {
+        await panel.webview.postMessage({
+            type: 'agentError',
+            nodeId,
+            message: 'Select a node with a source file before asking Bob a question.',
+        });
+        return;
+    }
+    if (typeof question !== 'string' || !question.trim()) {
+        await panel.webview.postMessage({
+            type: 'agentError',
+            nodeId,
+            message: 'Ask Bob a question before sending.',
+        });
+        return;
+    }
+
+    try {
+        const resolvedFilePath = resolveNodeFilePath(workspaceRoot, filePath);
+        await panel.webview.postMessage({ type: 'agentLoading', nodeId });
+        const answer = await runBobAgentQuestion(nodeId, resolvedFilePath, question);
+        await panel.webview.postMessage({ type: 'agentAnswer', nodeId, answer });
+    } catch (error) {
+        await panel.webview.postMessage({
+            type: 'agentError',
+            nodeId,
+            message: `Unable to ask Bob: ${error instanceof Error ? error.message : String(error)}`,
+        });
     }
 }
 
