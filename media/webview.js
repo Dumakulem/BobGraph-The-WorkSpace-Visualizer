@@ -321,9 +321,10 @@ let isLoading = false;
         cy = cytoscape({
             container: document.getElementById('cy'),
             elements: elements,
-            // Keep Cytoscape's canvas aligned with the webview's physical pixels. Without
-            // this, high-DPI displays can render labels noticeably softer than surrounding UI.
-            pixelRatio: window.devicePixelRatio || 1,
+            // Let Cytoscape read the renderer's actual backing-store ratio. This is more
+            // reliable than window.devicePixelRatio inside a VS Code webview.
+            pixelRatio: 'auto',
+            textureOnViewport: false,
             // Nodes are deliberately not draggable. Cytoscape suppresses the `tap` event
             // when a press turns into a drag, so a grabbable node makes "click a file and
             // nothing happens" a real possibility - and dragging buys nothing in a

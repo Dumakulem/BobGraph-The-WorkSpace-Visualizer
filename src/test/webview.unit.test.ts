@@ -507,7 +507,8 @@ describe('opening a flowchart', () => {
             true,
             'autoungrabify not set: taps can be lost to drag gestures'
         );
-        assert.strictEqual(opts.pixelRatio, 1, 'Cytoscape should use the webview device pixel ratio');
+        assert.strictEqual(opts.pixelRatio, 'auto', 'Cytoscape should use its actual backing-store ratio');
+        assert.strictEqual(opts.textureOnViewport, false, 'zoom should render labels instead of scaling a cached texture');
     });
 
     it('wires a hover cursor, since Cytoscape is a canvas', async () => {
