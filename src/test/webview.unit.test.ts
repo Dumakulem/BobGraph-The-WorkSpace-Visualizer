@@ -65,7 +65,10 @@ interface Harness {
     layoutsUsed: string[];
     lastElements: any[];
     lastStyle: any[];
+    handlers: Record<string, (evt: any) => void>;
+    cytoscapeOptions: any[];
     tap(): void;
+    dbltap(): void;
     hasTapHandler(): boolean;
     fire(id: string): void;
 }
@@ -105,6 +108,8 @@ function run(options: Options = {}): Harness {
     const fetches: string[] = [];
     const useCalls: unknown[] = [];
     const layoutsUsed: string[] = [];
+    const handlers: Record<string, (evt: any) => void> = {};
+    const cytoscapeOptions: any[] = [];
     let tapHandler: ((evt: any) => void) | null = null;
     let domReady: (() => void) | null = null;
 
@@ -113,13 +118,16 @@ function run(options: Options = {}): Harness {
             layoutsUsed.push(opts.layout.name);
             lastElements.push(...(opts.elements ?? []));
             lastStyle.push(...(opts.style ?? []));
+            cytoscapeOptions.push(opts);
             return {
                 destroy() { /* replaced between renders */ },
                 on(event: string, selector: string, cb: (evt: any) => void) {
+                    handlers[event] = cb;
                     if (event === 'tap' && selector === 'node') {
                         tapHandler = cb;
                     }
                 },
+                container: () => [{ style: {} }],
                 layout: () => ({ run() { /* no animation in tests */ } })
             };
         },
@@ -210,7 +218,13 @@ function run(options: Options = {}): Harness {
         layoutsUsed,
         lastElements,
         lastStyle,
+        handlers,
+        cytoscapeOptions,
         hasTapHandler: () => typeof tapHandler === 'function',
+        dbltap: () => {
+            assert.ok(handlers.dbltap, 'no dbltap handler - double click would do nothing');
+            (handlers.dbltap as unknown as (evt: any) => void)({ target: fileNode });
+        },
         tap: () => {
             assert.ok(tapHandler, 'no tap handler registered - clicking a node would do nothing');
             (tapHandler as unknown as (evt: any) => void)({ target: fileNode });
@@ -367,6 +381,73 @@ describe('refresh', () => {
             !h.fetches[h.fetches.length - 1].includes('/flowcharts/'),
             'back did not leave the flowchart view'
         );
+    });
+});
+
+describe('opening a flowchart', () => {
+    it('opens on a single click of a file node', async () => {
+        const h = run();
+        await settle();
+        h.tap();
+        await settle();
+        assert.ok(
+            h.fetches.some((u) => String(u).includes('flowcharts/todo-app.json')),
+            `no flowchart fetch; saw ${JSON.stringify(h.fetches)}`
+        );
+    });
+
+    it('opens on a double click too', async () => {
+        // Cytoscape fires dbltap separately from tap, so this needs its own handler.
+        // People try double click first; relying on tap firing twice was not good enough.
+        const h = run();
+        await settle();
+        h.dbltap();
+        await settle();
+        assert.ok(
+            h.fetches.some((u) => String(u).includes('flowcharts/todo-app.json')),
+            'double click did not open the flowchart'
+        );
+    });
+
+    it('fetches the flowchart only once when a double click fires both events', async () => {
+        const h = run();
+        await settle();
+        h.dbltap();
+        h.tap();
+        await settle();
+        const flowFetches = h.fetches.filter((u) => String(u).includes('flowcharts/'));
+        assert.strictEqual(
+            flowFetches.length,
+            1,
+            `expected one flowchart fetch, got ${flowFetches.length}: ${JSON.stringify(flowFetches)}`
+        );
+    });
+
+    it('makes nodes ungrabbable so a press is never swallowed as a drag', async () => {
+        // Cytoscape suppresses `tap` when a press becomes a drag. With physics layouts on
+        // grabbable nodes, that is exactly "I clicked the file and nothing happened".
+        const h = run();
+        await settle();
+        const opts = h.cytoscapeOptions[0];
+        assert.strictEqual(
+            opts.autoungrabify,
+            true,
+            'autoungrabify not set: taps can be lost to drag gestures'
+        );
+    });
+
+    it('wires a hover cursor, since Cytoscape is a canvas', async () => {
+        const h = run();
+        await settle();
+        assert.ok(h.handlers.mouseover, 'no mouseover handler, so nodes give no hover affordance');
+        assert.ok(h.handlers.mouseout, 'no mouseout handler');
+    });
+
+    it('tells the user how to reach the flowchart', () => {
+        // The empty state is the only instruction a first-time user gets.
+        const html = readMedia('webview.html');
+        assert.match(html, /file/i);
+        assert.match(html, /flowchart/i);
     });
 });
 

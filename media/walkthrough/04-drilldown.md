@@ -2,7 +2,7 @@
 
 Click any **file** node in the workspace graph and the view switches to that file's
 flowchart: the actual logic, laid out top to bottom with `dagre` instead of the free-form
-`cose` layout used for the workspace.
+`cose` layout used for the workspace. A single click or a double-click both work.
 
 You will see a breadcrumb above the graph:
 

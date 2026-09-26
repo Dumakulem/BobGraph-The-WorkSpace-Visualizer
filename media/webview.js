@@ -273,6 +273,12 @@ let isLoading = false;
         cy = cytoscape({
             container: document.getElementById('cy'),
             elements: elements,
+            // Nodes are deliberately not draggable. Cytoscape suppresses the `tap` event
+            // when a press turns into a drag, so a grabbable node makes "click a file and
+            // nothing happens" a real possibility - and dragging buys nothing in a
+            // read-only viewer. Panning the background is unaffected: that is container
+            // level, not node level.
+            autoungrabify: true,
             style: [
                 {
                     selector: 'node',
@@ -324,14 +330,44 @@ let isLoading = false;
             layout: layout
         });
 
-        cy.on('tap', 'node', (evt) => {
+        function onNodeActivate(evt) {
             const data = evt.target.data();
             showNodeDetails(data);
 
-            if (currentView === 'workspace' && data.type === 'file') {
-                renderFlowchart(data.flowchart ?? data.id, data.label);
+            if (currentView !== 'workspace') {
+                // Already inside a flowchart. Drilling again would be meaningless, and the
+                // Back button is the way out.
+                return;
             }
-        });
+            if (data.type !== 'file') {
+                // Say why nothing opened. Silently doing nothing here is what made this
+                // look like a broken extension.
+                console.info(
+                    `"${data.label}" is a ${data.type} node; only file nodes open a flowchart.`
+                );
+                return;
+            }
+
+            renderFlowchart(data.flowchart ?? data.id, data.label);
+        }
+
+        cy.on('tap', 'node', onNodeActivate);
+        // A double click is a separate event in Cytoscape, and it is what people reach for
+        // first, so it is wired explicitly rather than relying on `tap` firing twice.
+        // When both fire for one double click the second is absorbed by the isLoading guard
+        // inside renderFlowchart, because that flag is set before the first await.
+        cy.on('dbltap', 'node', onNodeActivate);
+
+        // Cytoscape draws to a canvas, so hover affordance has to be set by hand.
+        cy.on('mouseover', 'node', () => setCanvasCursor('pointer'));
+        cy.on('mouseout', 'node', () => setCanvasCursor(''));
+
+        function setCanvasCursor(value) {
+            const container = cy && cy.container ? cy.container()[0] : null;
+            if (container && container.style) {
+                container.style.cursor = value;
+            }
+        }
 
         return downgraded;
     }
