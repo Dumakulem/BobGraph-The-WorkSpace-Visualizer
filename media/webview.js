@@ -398,14 +398,27 @@ let isLoading = false;
         // Keep the graph from being panned so far off-screen that it disappears.
         // After every pan/zoom event, if the bounding box of all nodes has moved
         // completely outside the viewport, snap it back to fit.
+        //
+        // Guard flag: cy.animate() fires its own `viewport` events while running,
+        // which would re-trigger this handler and start a second animation, creating
+        // the infinite diagonal-pan glitch reported in issue #4. Skip the check while
+        // a snap-back is already in progress.
+        let isSnapping = false;
         cy.on('viewport', () => {
+            if (isSnapping) { return; }
             const ext = cy.extent();           // viewport rectangle in model coords
             const bb  = cy.elements().boundingBox(); // nodes bounding box in model coords
             // Check overlap: if the bb is entirely outside the viewport, re-fit.
             const noOverlapH = bb.x2 < ext.x1 || bb.x1 > ext.x2;
             const noOverlapV = bb.y2 < ext.y1 || bb.y1 > ext.y2;
             if (noOverlapH || noOverlapV) {
-                cy.animate({ fit: { eles: cy.elements(), padding: 60 }, duration: 250, easing: 'ease-out' });
+                isSnapping = true;
+                cy.animate({
+                    fit: { eles: cy.elements(), padding: 60 },
+                    duration: 250,
+                    easing: 'ease-out',
+                    complete: () => { isSnapping = false; }
+                });
             }
         });
 
