@@ -80,10 +80,13 @@ export interface BobAgentResponse {
 	modelName: string;
 }
 
+type AgentProgress = (modelName: string) => void;
+
 export async function runBobAgentQuestion(
 	nodeId: string,
 	filePath: string,
 	question: string,
+	onProgress?: AgentProgress,
 ): Promise<BobAgentResponse> {
 	const trimmedQuestion = question.trim();
 	if (!trimmedQuestion) {
@@ -103,6 +106,8 @@ export async function runBobAgentQuestion(
 	}
 
 	const model = await selectModel();
+	const modelName = model.name || model.family || 'Language Model';
+	onProgress?.(modelName);
 	const prompt = `You are Bob, a software engineering assistant helping a developer understand a codebase.
 Answer the user's question about the selected node using the source context below.
 Be concise and practical. Do not modify files or claim to have run code.
@@ -116,15 +121,15 @@ Source context:
 ${content}`;
 	return {
 		answer: await sendTextRequest(model, prompt),
-		modelName: model.name || model.family || 'Language Model',
+		modelName,
 	};
 }
 
 export async function checkLanguageModelConnection(): Promise<string> {
-	const models = await vscode.lm.selectChatModels();
+	const models = await selectAvailableModels();
 	if (models.length === 0) {
 		throw new BobAdapterError(
-			'No language model is registered with VS Code. Install, enable, and sign in to an assistant that exposes the VS Code Language Model API.',
+			'No language model is available. Sign in to GitHub Copilot and allow this extension to use language models, or install another provider that exposes the VS Code Language Model API.',
 		);
 	}
 	return models.map(model => `${model.name} (${model.vendor}/${model.family})`).join(', ');
@@ -191,13 +196,34 @@ async function collectSourceSnippets(
 }
 
 async function selectModel(): Promise<vscode.LanguageModelChat> {
-	const models = await vscode.lm.selectChatModels();
+	const models = await selectAvailableModels();
 	if (models.length === 0) {
 		throw new BobAdapterError(
-			'No VS Code language model is available. Install and sign in to IBM Bob or another compatible assistant.',
+			'No language model is available. Sign in to GitHub Copilot and allow this extension to use language models, or install another compatible provider.',
 		);
 	}
 	return models.find(model => /claude|gpt|llama|granite/i.test(model.family)) ?? models[0];
+}
+
+async function selectAvailableModels(): Promise<vscode.LanguageModelChat[]> {
+	if (availableModels) {
+		return availableModels;
+	}
+	// Copilot requires the vendor selector for extensions using the Language Model API.
+	// Calling it from a user action also gives VS Code a chance to show its consent prompt.
+	const copilotModels = await vscode.lm.selectChatModels({ vendor: 'copilot' });
+	availableModels = copilotModels.length > 0
+		? copilotModels
+		// Keep support for IBM Bob and other providers that register directly with VS Code.
+		: await vscode.lm.selectChatModels();
+	return availableModels;
+}
+
+let availableModels: vscode.LanguageModelChat[] | undefined;
+if (vscode.lm?.onDidChangeChatModels) {
+	vscode.lm.onDidChangeChatModels(() => {
+		availableModels = undefined;
+	});
 }
 
 async function sendTextRequest(model: vscode.LanguageModelChat, prompt: string): Promise<string> {

@@ -148,5 +148,6 @@ describe('webview markup', () => {
         assert.match(readMedia('style.css'), /\.agent-body\s*\{[\s\S]*min-height:\s*0[\s\S]*overflow:\s*hidden/);
         assert.match(readMedia('style.css'), /\.agent-messages\s*\{[\s\S]*overflow-y:\s*auto/);
         assert.match(js, /modelName/);
+        assert.doesNotMatch(js, /Bob is thinking/);
     });
 });

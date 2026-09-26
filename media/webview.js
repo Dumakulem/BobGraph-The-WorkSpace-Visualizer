@@ -812,7 +812,11 @@ let isLoading = false;
             }
         } else if (message && message.type === 'agentLoading') {
             if (message.nodeId === selectedNodeId) {
-                appendAgentMessage('Bob is thinking...', 'agent-status');
+                const modelName = typeof message.modelName === 'string' && message.modelName.trim()
+                    ? message.modelName.trim()
+                    : 'AI';
+                setAgentName(modelName);
+                appendAgentMessage(`${modelName} is thinking...`, 'agent-status');
                 setAgentBusy(true);
             }
         } else if (message && message.type === 'agentAnswer') {
@@ -884,7 +888,9 @@ let isLoading = false;
         if (input) input.disabled = busy;
         if (send) {
             send.disabled = busy || !selectedNodeData;
-            send.textContent = busy ? 'Thinking...' : 'Ask Bob';
+            const title = document.getElementById('agentTitle');
+            const modelName = title?.textContent?.replace(/\s+Agent$/, '') || 'AI';
+            send.textContent = busy ? `${modelName} is thinking...` : 'Ask';
         }
     }
 
