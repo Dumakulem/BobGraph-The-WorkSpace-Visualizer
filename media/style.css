@@ -4,6 +4,11 @@
  * browser (the standalone prototype), so they are dark on purpose.
  * Do not redefine these in :root - that would shadow the host and freeze the
  * panel to one theme regardless of what the user picked.
+ *
+ * --accent-* is the graph palette and is the single source of truth: webview.js
+ * reads these via themeColor() rather than repeating the hex, because Cytoscape
+ * paints to a canvas and cannot resolve custom properties itself. Add a node
+ * colour here, not in webview.js.
  */
 :root {
     --accent-blue: #007acc;
@@ -11,6 +16,7 @@
     --accent-slate: #64748b;
     --accent-green: #4ade80;
     --accent-gold: #d4af37;
+    --accent-red: #e14b4b;
     --shadow-sm: 0 2px 4px rgba(0,0,0,0.3);
     --shadow-md: 0 4px 8px rgba(0,0,0,0.5);
     --transition-speed: 0.2s;

@@ -146,44 +146,48 @@ let isLoading = false;
         }
     }
 
+    // Colours come from the --accent-* palette in style.css, not from literals here.
+    // The hex is only a fallback for when style.css has not loaded. Keeping the two in
+    // step matters: this file used to carry its own copies, and a palette change in the
+    // CSS silently left the graph in the old colours.
     const nodeStyles = {
         file: {
-            background: '#64748b',
+            background: themeColor('--accent-slate', '#64748b'),
             shape: 'rectangle',
             label: 'font-size:12px; color:#ffffff; font-weight:bold; text-valign:center; text-halign:center;',
             width: 140,
             height: 50
         },
         class: {
-            background: '#007acc',
+            background: themeColor('--accent-blue', '#007acc'),
             shape: 'round-rectangle',
             label: 'font-size:12px; color:#ffffff; font-weight:bold; text-valign:center; text-halign:center;',
             width: 120,
             height: 50
         },
         method: {
-            background: '#5865f2',
+            background: themeColor('--accent-indigo', '#5865f2'),
             shape: 'ellipse',
             label: 'font-size:11px; color:#ffffff; text-valign:center; text-halign:center;',
             width: 100,
             height: 40
         },
         function: {
-            background: '#4ade80',
+            background: themeColor('--accent-green', '#4ade80'),
             shape: 'ellipse',
             label: 'font-size:11px; color:#000000; text-valign:center; text-halign:center;',
             width: 100,
             height: 40
         },
         start_end: {
-            background: '#d4af37',
+            background: themeColor('--accent-gold', '#d4af37'),
             shape: 'round-rectangle',
             label: 'font-size:12px; color:#000000; font-weight:bold; text-valign:center; text-halign:center;',
             width: 100,
             height: 40
         },
         decision: {
-            background: '#e14b4b',
+            background: themeColor('--accent-red', '#e14b4b'),
             shape: 'diamond',
             label: 'font-size:11px; color:#ffffff; text-valign:center; text-halign:center;',
             width: 120,

@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as vm from 'vm';
 import { describe, it } from 'node:test';
 
-import { MEDIA } from './helpers';
+import { MEDIA, readMedia } from './helpers';
 
 const SOURCE = path.join(MEDIA, 'webview.js');
 
@@ -63,6 +63,8 @@ interface Harness {
     fetches: string[];
     useCalls: unknown[];
     layoutsUsed: string[];
+    lastElements: any[];
+    lastStyle: any[];
     tap(): void;
     hasTapHandler(): boolean;
     fire(id: string): void;
@@ -76,8 +78,24 @@ interface Options {
     realCytoscape?: boolean;
 }
 
+function workspaceWithEveryType() {
+    return {
+        nodes: [
+            { id: 'a', name: 'A', type: 'file' },
+            { id: 'b', name: 'B', type: 'class' },
+            { id: 'c', name: 'C', type: 'method' },
+            { id: 'd', name: 'D', type: 'function' },
+            { id: 'e', name: 'E', type: 'start_end' },
+            { id: 'f', name: 'F', type: 'decision' }
+        ],
+        edges: []
+    };
+}
+
 function run(options: Options = {}): Harness {
     const { flowchartFails = false, dagrePlugin = 'ok', nodeCount = 1, model } = options;
+    const lastElements: any[] = [];
+    const lastStyle: any[] = [];
 
     const els: Record<string, StubEl> = {};
     for (const id of ['cy', 'breadcrumb', 'breadcrumbText', 'nodeInfo', 'backBtn', 'refreshBtn']) {
@@ -93,6 +111,8 @@ function run(options: Options = {}): Harness {
     const cytoscape = Object.assign(
         function (opts: any) {
             layoutsUsed.push(opts.layout.name);
+            lastElements.push(...(opts.elements ?? []));
+            lastStyle.push(...(opts.style ?? []));
             return {
                 destroy() { /* replaced between renders */ },
                 on(event: string, selector: string, cb: (evt: any) => void) {
@@ -123,6 +143,16 @@ function run(options: Options = {}): Harness {
         edges: []
     };
 
+    // Real values parsed out of style.css, so the graph palette is exercised through the
+    // same path the browser uses rather than silently falling back to JS literals.
+    const themeVars: Record<string, string> = (() => {
+        const out: Record<string, string> = {};
+        for (const m of readMedia('style.css').matchAll(/(--[\w-]+):\s*([^;]+);/g)) {
+            out[m[1]] = m[2].trim();
+        }
+        return out;
+    })();
+
     const sandbox: any = {
         // The real console is passed through so an unexpected throw is visible instead of
         // being swallowed by a no-op stub. A silent catch once hid a real regression.
@@ -137,6 +167,12 @@ function run(options: Options = {}): Harness {
             }
         },
         window: { addEventListener() { /* host messages unused here */ }, MOCK_DATA_URI: 'https://x/media/workspace-graph.json' },
+        // Real values parsed out of style.css, so the graph palette is exercised through the
+        // same path the browser uses. Without this the whole themeColor() branch silently
+        // fell back to its literals and the theming code was never actually run.
+        getComputedStyle: () => ({
+            getPropertyValue: (name: string) => themeVars[name] ?? ''
+        }),
         HTMLElement: class { },
         cytoscape,
         fetch: async (uri: string) => {
@@ -172,6 +208,8 @@ function run(options: Options = {}): Harness {
         fetches,
         useCalls,
         layoutsUsed,
+        lastElements,
+        lastStyle,
         hasTapHandler: () => typeof tapHandler === 'function',
         tap: () => {
             assert.ok(tapHandler, 'no tap handler registered - clicking a node would do nothing');
@@ -329,6 +367,65 @@ describe('refresh', () => {
             !h.fetches[h.fetches.length - 1].includes('/flowcharts/'),
             'back did not leave the flowchart view'
         );
+    });
+});
+
+describe('graph palette', () => {
+    it('resolves every node colour from the --accent-* palette in style.css', async () => {
+        const h = run({ model: workspaceWithEveryType() });
+        await settle();
+
+        // The per-type style sheet is built from nodeStyles, keyed by selector.
+        const byType = new Map<string, any>();
+        for (const s of h.lastStyle) {
+            const m = /^node\[type="(.+)"\]$/.exec(s.selector ?? '');
+            if (m) {
+                byType.set(m[1], s.style);
+            }
+        }
+        assert.ok(byType.size >= 6, `expected all 6 node types styled, got ${byType.size}`);
+
+        // Every colour must be the concrete hex declared in style.css - proving the CSS
+        // custom property was actually read rather than the JS fallback being used.
+        for (const [type, style] of byType) {
+            assert.ok(
+                /^#[0-9a-f]{6}$/i.test(style.background),
+                `${type} background is "${style.background}", not a resolved hex from the palette`
+            );
+        }
+    });
+
+    it('keeps webview.js from re-declaring palette colours', () => {
+        // style.css is the single source of truth for the graph palette. webview.js used
+        // to carry its own copies of the hex values, so editing the palette left the graph
+        // rendering in the old colours. Two things must hold:
+        //   1. every node background is resolved through an --accent-* variable
+        //   2. the literal fallback agrees with what style.css declares
+        const declared = new Map<string, string>();
+        for (const m of readMedia('style.css').matchAll(/(--accent-[\w-]+):\s*(#[0-9a-f]{3,8})/gi)) {
+            declared.set(m[1], m[2].toLowerCase());
+        }
+
+        const source = readMedia('webview.js');
+        // Match either a whole themeColor(...) call or a bare hex literal.
+        const backgrounds = [...source.matchAll(/background:\s*(themeColor\([^)]*\)|'#[0-9a-f]{6}')/g)]
+            .map((m) => m[1].trim());
+        assert.ok(backgrounds.length >= 6, `expected the 6 node styles, found ${backgrounds.length}`);
+
+        for (const bg of backgrounds) {
+            const themed = /^themeColor\('(--accent-[\w-]+)'\s*,\s*'(#[0-9a-f]{6})'\)$/.exec(bg);
+            assert.ok(themed, `node background is not themed: ${bg}`);
+            const [, variable, fallback] = themed;
+            assert.ok(
+                declared.has(variable),
+                `${variable} is used in webview.js but not declared in style.css`
+            );
+            assert.strictEqual(
+                fallback,
+                declared.get(variable),
+                `fallback for ${variable} disagrees with style.css (${fallback} vs ${declared.get(variable)})`
+            );
+        }
     });
 });
 
