@@ -1,0 +1,105 @@
+{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "start_end",
+      "name": "Start",
+      "filePath": "src/todo-app.js",
+      "line": 1,
+      "pseudocode": "Entry point. Bootstraps the TodoManager and wires up event listeners."
+    },
+    {
+      "id": "class_todo_manager",
+      "type": "class",
+      "name": "TodoManager",
+      "filePath": "src/todo-app.js",
+      "line": 10,
+      "pseudocode": "Central class that owns the todo list state and exposes mutation methods."
+    },
+    {
+      "id": "prop_items",
+      "type": "property",
+      "name": "items: Todo[]",
+      "filePath": "src/todo-app.js",
+      "line": 12,
+      "pseudocode": "Private array holding all Todo objects currently in the list."
+    },
+    {
+      "id": "prop_next_id",
+      "type": "property",
+      "name": "nextId: number",
+      "filePath": "src/todo-app.js",
+      "line": 13,
+      "pseudocode": "Auto-incrementing counter used to assign unique IDs to new todos."
+    },
+    {
+      "id": "method_add",
+      "type": "method",
+      "name": "addTodo(text)",
+      "filePath": "src/todo-app.js",
+      "line": 20,
+      "pseudocode": "Validates that text is non-empty, constructs a new Todo object { id, text, done: false }, pushes it to this.items, then calls saveToDisk()."
+    },
+    {
+      "id": "method_remove",
+      "type": "method",
+      "name": "removeTodo(id)",
+      "filePath": "src/todo-app.js",
+      "line": 32,
+      "pseudocode": "Filters this.items to exclude the item whose id matches the argument. Calls saveToDisk() after mutation."
+    },
+    {
+      "id": "method_toggle",
+      "type": "method",
+      "name": "toggleDone(id)",
+      "filePath": "src/todo-app.js",
+      "line": 42,
+      "pseudocode": "Finds the item with the matching id and flips its done boolean. Calls saveToDisk() after mutation."
+    },
+    {
+      "id": "method_get_all",
+      "type": "method",
+      "name": "getAll()",
+      "filePath": "src/todo-app.js",
+      "line": 52,
+      "pseudocode": "Returns a shallow copy of this.items so callers cannot mutate internal state directly."
+    },
+    {
+      "id": "decision_valid",
+      "type": "decision",
+      "name": "Input\nValid?",
+      "filePath": "src/todo-app.js",
+      "line": 22,
+      "pseudocode": "Checks that the provided text argument is a non-empty string after trimming whitespace."
+    },
+    {
+      "id": "method_render",
+      "type": "function",
+      "name": "renderList()",
+      "filePath": "src/todo-app.js",
+      "line": 60,
+      "pseudocode": "Clears the DOM list element and re-renders each item in TodoManager.getAll() as a <li> with a toggle checkbox and a delete button."
+    },
+    {
+      "id": "end",
+      "type": "start_end",
+      "name": "End",
+      "filePath": "src/todo-app.js",
+      "line": 80,
+      "pseudocode": "App fully initialised and reactive. All user events handled by listeners."
+    }
+  ],
+  "edges": [
+    { "source": "start",             "target": "class_todo_manager", "relation": "flow" },
+    { "source": "class_todo_manager","target": "prop_items",          "relation": "contains" },
+    { "source": "class_todo_manager","target": "prop_next_id",        "relation": "contains" },
+    { "source": "class_todo_manager","target": "method_add",          "relation": "contains" },
+    { "source": "class_todo_manager","target": "method_remove",       "relation": "contains" },
+    { "source": "class_todo_manager","target": "method_toggle",       "relation": "contains" },
+    { "source": "class_todo_manager","target": "method_get_all",      "relation": "contains" },
+    { "source": "method_add",        "target": "decision_valid",      "relation": "flow" },
+    { "source": "decision_valid",    "target": "method_render",       "relation": "flow" },
+    { "source": "method_get_all",    "target": "method_render",       "relation": "calls" },
+    { "source": "method_render",     "target": "end",                 "relation": "flow" }
+  ]
+}
