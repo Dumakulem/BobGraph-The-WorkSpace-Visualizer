@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { writeGraph } from './graphStore';
+import { validateGraph, writeGraph } from './graphStore';
 import { buildNodesFromScannedFiles, inferEdgesDeterministic } from './graphBuilder';
 import { scanWorkspaceFiles } from './workspaceScanner';
 import type { SourceSnippet } from './graphBuilder';
@@ -9,6 +9,7 @@ import type { GraphData, GraphEdge, GraphNode } from './graphStore';
 
 const MAX_SNIPPET_CHARS = 2000;
 const MAX_EXPLANATION_CHARS = 8000;
+const MAX_FLOWCHART_CHARS = 14000;
 const MAX_AGENT_QUESTION_CHARS = 4000;
 
 export class BobAdapterError extends Error {
@@ -53,6 +54,102 @@ export async function generateBobGraph(workspaceRoot: string): Promise<GraphData
 
 export async function runBobGraphGeneration(workspaceRoot: string): Promise<void> {
 	await writeGraph(workspaceRoot, await generateBobGraph(workspaceRoot));
+}
+
+export async function getBobModelName(): Promise<string> {
+	const model = await selectModel();
+	return model.name || model.family || 'AI';
+}
+
+/**
+ * Ask the model for a semantic representation of one file.
+ *
+ * This intentionally does not model source lines. A line-by-line graph is a
+ * code listing, not an explanation of how the code is structured or related.
+ */
+export async function generateBobFlowchart(
+	filePath: string,
+	fileName: string,
+): Promise<GraphData> {
+	let content: string;
+	try {
+		content = (await fs.readFile(filePath, 'utf8')).slice(0, MAX_FLOWCHART_CHARS);
+	} catch (error) {
+		throw new BobAdapterError(`Unable to read "${filePath}" for flowchart generation: ${String(error)}`);
+	}
+
+	const model = await selectModel();
+	const prompt = `You are a senior software engineer creating a visual explanation for an intern.
+Analyze the source file below and return ONLY one JSON object with "nodes" and "edges".
+
+Create a semantic flowchart, not a source-code listing:
+- Do NOT create one node per line, blank line, statement, or punctuation.
+- Create nodes for meaningful concepts: module entry/exit, classes, interfaces,
+  important properties/state, functions/methods, external services, transformations,
+  loops, and decisions.
+- Combine implementation details into the nearest meaningful function or decision.
+- Use 5-20 nodes when possible. Prefer fewer useful nodes over many tiny nodes.
+- Every node must have: "id", "label", "type", "filePath", and "pseudocode".
+- "type" must be one of: "start_end", "class", "method", "function",
+  "property", "decision", or "file".
+- "pseudocode" must explain the node's responsibility and important inputs/outputs
+  in plain language, not repeat source code.
+- Set every node's "filePath" to exactly "${fileName}" and include the best 1-based
+  source "line" when you can identify it.
+- Edges describe real relationships and must use "from", "to", and "relation".
+- Use relation values such as "contains", "calls", "reads", "writes", "transforms",
+  "branches to", "depends on", "emits", or "returns".
+- Add edges that explain ownership, call/data flow, and decision branches. Do not
+  connect nodes merely because they are adjacent in the file.
+- IDs must be unique and referenced nodes must exist.
+
+Required shape:
+{"nodes":[{"id":"...","label":"...","type":"...","filePath":"${fileName}","line":1,"pseudocode":"..."}],"edges":[{"from":"...","to":"...","relation":"..."}]}
+
+File: ${fileName}
+Source:
+${content}`;
+
+	const raw = await sendTextRequest(model, prompt);
+	const json = extractJsonObject(raw);
+	if (!json) {
+		throw new BobAdapterError('Language model did not return a semantic flowchart JSON object.');
+	}
+
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(json);
+	} catch {
+		throw new BobAdapterError('Language model returned invalid flowchart JSON.');
+	}
+	if (!isObject(parsed) || !Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+		throw new BobAdapterError('Language model flowchart must contain nodes and edges arrays.');
+	}
+
+	const normalized = {
+		nodes: parsed.nodes.map(node => {
+			if (!isObject(node)) {
+				return node;
+			}
+			return { ...node, filePath: fileName };
+		}),
+		edges: parsed.edges.map(edge => {
+			if (!isObject(edge)) {
+				return edge;
+			}
+			return {
+				...edge,
+				from: edge.from ?? edge.source,
+				to: edge.to ?? edge.target,
+			};
+		}),
+	};
+
+	try {
+		return validateGraph(normalized);
+	} catch (error) {
+		throw new BobAdapterError(`Language model returned an invalid semantic flowchart: ${String(error)}`);
+	}
 }
 
 export async function runBobNodeExplanation(nodeId: string, filePath: string): Promise<string> {
@@ -256,6 +353,14 @@ function extractJson(text: string): string | undefined {
 	const start = text.indexOf('[');
 	const end = text.lastIndexOf(']');
 	return start >= 0 && end > start ? text.slice(start, end + 1) : undefined;
+}
+
+function extractJsonObject(text: string): string | undefined {
+	const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+	const candidate = fenced?.[1].trim() ?? text.trim();
+	const start = candidate.indexOf('{');
+	const end = candidate.lastIndexOf('}');
+	return start >= 0 && end > start ? candidate.slice(start, end + 1) : undefined;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

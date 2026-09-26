@@ -229,10 +229,12 @@ let isLoading = false;
             'border-color': '#f87171',
             'border-width': 1,
             shape: 'diamond',
-            width: 130,
-            height: 130,
+            width: 180,
+            height: 150,
             color: '#ffffff',
             'font-size': 11,
+            'text-wrap': 'wrap',
+            'text-max-width': 120,
             'text-valign': 'center',
             'text-halign': 'center'
         },
@@ -353,9 +355,9 @@ let isLoading = false;
                         'font-family': 'Segoe UI, system-ui, sans-serif',
                         'text-outline-width': 0,
                         'text-outline-color': 'transparent',
-                        // Ellipsis keeps long filenames inside every node shape, including
-                        // the narrower method/function nodes and diamond decisions.
-                        'text-wrap': 'ellipsis',
+                        // Keep labels readable without clipping semantic names. Individual
+                        // node styles can override the wrapping width for their shape.
+                        'text-wrap': 'wrap',
                         'text-max-width': 100,
                         'transition-property': 'border-width, border-color, opacity, background-color',
                         'transition-duration': '150ms'
@@ -717,7 +719,8 @@ let isLoading = false;
         const explanation = document.createElement('div');
         explanation.id = 'nodeExplanation';
         explanation.className = 'node-explanation';
-        explanation.textContent = nodeSummaries.get(data.id) ?? 'Bob is preparing a summary...';
+        explanation.textContent = nodeSummaries.get(data.id) ??
+            `${activeModelName} is preparing a summary...`;
         infoDiv.append(explanation);
 
         // Connections section — list every neighbour node so the user can see
@@ -777,10 +780,16 @@ let isLoading = false;
             renderWorkspaceGraph(message.payload);
         } else if (message && message.type === 'explanationLoading') {
             if (message.nodeId === selectedNodeId) {
+                if (typeof message.modelName === 'string' && message.modelName.trim()) {
+                    setAgentName(message.modelName);
+                }
                 const summary = document.getElementById('nodeExplanation');
-                if (summary) summary.textContent = 'Bob is preparing a summary...';
+                if (summary) summary.textContent = `${activeModelName} is preparing a summary...`;
             }
         } else if (message && message.type === 'nodeExplanation') {
+            if (typeof message.modelName === 'string' && message.modelName.trim()) {
+                setAgentName(message.modelName);
+            }
             if (typeof message.nodeId === 'string' && typeof message.summary === 'string') {
                 nodeSummaries.set(message.nodeId, message.summary);
             }

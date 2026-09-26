@@ -278,9 +278,11 @@ async function sendNodeExplanation(
 
     try {
         const resolvedFilePath = resolveNodeFilePath(workspaceRoot, filePath);
-        await panel.webview.postMessage({ type: 'explanationLoading', nodeId });
-        const summary = await getGraphProvider().explainNode(resolvedFilePath, workspaceRoot, nodeId);
-        await panel.webview.postMessage({ type: 'nodeExplanation', nodeId, summary });
+        const provider = getGraphProvider();
+        const modelName = await provider.getModelName();
+        await panel.webview.postMessage({ type: 'explanationLoading', nodeId, modelName });
+        const summary = await provider.explainNode(resolvedFilePath, workspaceRoot, nodeId);
+        await panel.webview.postMessage({ type: 'nodeExplanation', nodeId, summary, modelName });
     } catch (error) {
         await panel.webview.postMessage({
             type: 'graphError',
@@ -304,30 +306,12 @@ async function sendNodeFlowchart(panel: vscode.WebviewPanel, nodeId: string): Pr
 
         try {
             const filePath = resolveNodeFilePath(workspaceRoot, node.filePath);
-            const source = await fs.promises.readFile(filePath, 'utf8');
-            const lines = source.split(/\r?\n/).map((line, index) => ({
-                id: `line-${index + 1}`,
-                label: line.trim().slice(0, 80) || '(blank line)',
-                type: 'method',
-                filePath: node.filePath,
-                line: index + 1,
-            })).slice(0, 100);
-            const flowNodes = [
-                { id: 'start', label: 'Start', type: 'start_end', filePath: node.filePath, line: 1 },
-                ...lines,
-                { id: 'end', label: 'End', type: 'start_end', filePath: node.filePath, line: Math.max(1, lines.length) },
-            ];
-            const ids = flowNodes.map(flowNode => flowNode.id);
-            const edges = ids.slice(1).map((id, index) => ({
-                from: ids[index],
-                to: id,
-                relation: 'flow',
-            }));
+            const graph = await getGraphProvider().generateFlowchart(filePath, workspaceRoot, nodeId);
             await panel.webview.postMessage({
                 type: 'flowchartData',
                 nodeId,
                 fileName: node.label,
-                graph: { nodes: flowNodes, edges },
+                graph,
             });
         } catch (error) {
             await panel.webview.postMessage({

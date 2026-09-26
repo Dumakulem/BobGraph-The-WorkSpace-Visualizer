@@ -9,7 +9,13 @@
  */
 
 import type { GraphData } from './bob/graphStore';
-import { checkLanguageModelConnection, generateBobGraph, runBobNodeExplanation } from './bob/bobAdapter';
+import {
+    checkLanguageModelConnection,
+    generateBobFlowchart,
+    generateBobGraph,
+    getBobModelName,
+    runBobNodeExplanation,
+} from './bob/bobAdapter';
 
 // ─── Interface ────────────────────────────────────────────────────────────────
 
@@ -42,6 +48,16 @@ export interface GraphProvider {
      * @param workspaceRoot  Absolute path to the workspace root directory.
      */
     explainNode(filePath: string, workspaceRoot: string, nodeId?: string): Promise<string>;
+
+    /** Return the model name that will be used for the next explanation request. */
+    getModelName(): Promise<string>;
+
+    /**
+     * Build a semantic flowchart for one source file. Nodes represent concepts
+     * and edges represent relationships; providers must not return one node per
+     * source line.
+     */
+    generateFlowchart(filePath: string, workspaceRoot: string, nodeId?: string): Promise<unknown>;
 }
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -121,6 +137,34 @@ export class MockGraphProvider implements GraphProvider {
         return `Mock explanation for ${filePath}`;
     }
 
+    async getModelName(): Promise<string> {
+        return 'Mock AI';
+    }
+
+    async generateFlowchart(filePath: string, _workspaceRoot: string, _nodeId?: string): Promise<unknown> {
+        return {
+            nodes: [
+                {
+                    id: 'start',
+                    label: 'Module entry',
+                    type: 'start_end',
+                    filePath,
+                    line: 1,
+                    pseudocode: 'Loads the module and exposes its public behavior.',
+                },
+                {
+                    id: 'end',
+                    label: 'Module exit',
+                    type: 'start_end',
+                    filePath,
+                    line: 1,
+                    pseudocode: 'The module completes after its exported behavior returns.',
+                },
+            ],
+            edges: [{ from: 'start', to: 'end', relation: 'flow' }],
+        };
+    }
+
     /**
      * The canonical valid graph returned by the mock provider.
      * Tests that verify the written content compare against this.
@@ -160,6 +204,14 @@ export class LanguageModelGraphProvider implements GraphProvider {
 
     async explainNode(filePath: string, _workspaceRoot: string, nodeId = filePath): Promise<string> {
         return runBobNodeExplanation(nodeId, filePath);
+    }
+
+    async getModelName(): Promise<string> {
+        return getBobModelName();
+    }
+
+    async generateFlowchart(filePath: string, _workspaceRoot: string, _nodeId?: string): Promise<unknown> {
+        return generateBobFlowchart(filePath, _nodeId ?? filePath.split(/[\\/]/).pop() ?? 'source-file');
     }
 }
 
