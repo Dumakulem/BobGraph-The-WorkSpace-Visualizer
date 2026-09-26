@@ -32,15 +32,16 @@ interface StubEl {
     style: { display: string };
     dataset: Record<string, string>;
     children: StubEl[];
-    listeners: Array<() => void>;
+    listeners: Array<(evt?: any) => void>;
     append(...children: StubEl[]): void;
-    addEventListener(event: string, cb: () => void): void;
-    fire(): void;
+    addEventListener(event: string, cb: (evt?: any) => void): void;
+    fire(evt?: any): void;
     matches(): boolean;
+    closest(selector: string): StubEl | null;
 }
 
 function makeEl(id: string): StubEl {
-    return {
+    const el: StubEl = {
         id,
         textContent: '',
         className: '',
@@ -52,20 +53,30 @@ function makeEl(id: string): StubEl {
         append(...children) {
             this.children.push(...children);
         },
-        addEventListener(event, cb) {
+        addEventListener(_event, cb) {
             // Element-level listeners are what the tests fire. document-level ones are
             // wired separately by the harness and are not routed through here.
             if (typeof cb === 'function') {
                 this.listeners.push(cb);
             }
         },
-        fire() {
-            this.listeners.forEach((cb) => cb());
+        fire(evt?: any) {
+            this.listeners.forEach((cb) => cb(evt));
         },
         matches() {
             return false;
+        },
+        // Walks the element itself; since our stub has no DOM parent chain, "closest"
+        // only matches the element itself. That is sufficient: the click handler calls
+        // event.target.closest('button[data-file-path]') and we pass the button as target.
+        closest(selector: string): StubEl | null {
+            if (selector === 'button[data-file-path]' && 'filePath' in this.dataset) {
+                return this;
+            }
+            return null;
         }
     };
+    return el;
 }
 
 interface Harness {
@@ -77,10 +88,19 @@ interface Harness {
     lastStyle: any[];
     handlers: Record<string, (evt: any) => void>;
     cytoscapeOptions: any[];
+    /** Messages posted to the extension host via window.vscode.postMessage. */
+    postMessages: any[];
     tap(): void;
     dbltap(): void;
     hasTapHandler(): boolean;
     fire(id: string): void;
+    /** Fire the tap handler with a custom node data object. */
+    tapNodeWith(data: Record<string, unknown>): void;
+    /**
+     * Fire the #nodeInfo click listener with the first button child that has a
+     * data-file-path attribute, simulating the user clicking "Open in IDE".
+     */
+    clickOpenInIde(): void;
 }
 
 interface Options {
@@ -171,27 +191,42 @@ function run(options: Options = {}): Harness {
         return out;
     })();
 
+    const postMessages: any[] = [];
+
+    // SandboxHTMLElement lets makeEl() produce instances that pass `instanceof HTMLElement`
+    // inside the sandbox, so the click-handler's `event.target instanceof HTMLElement` guard
+    // does not silently drop every Open in IDE click in tests.
+    class SandboxHTMLElement {}
+
     const sandbox: any = {
         // The real console is passed through so an unexpected throw is visible instead of
         // being swallowed by a no-op stub. A silent catch once hid a real regression.
         console,
         document: {
             getElementById: (id: string) => els[id] ?? null,
-            createElement: () => makeEl('new'),
+            createElement: () => {
+                const el = makeEl('new');
+                Object.setPrototypeOf(el, SandboxHTMLElement.prototype);
+                return el;
+            },
             addEventListener: (event: string, cb: () => void) => {
                 if (event === 'DOMContentLoaded') {
                     domReady = cb;
                 }
             }
         },
-        window: { addEventListener() { /* host messages unused here */ }, MOCK_DATA_URI: 'https://x/media/workspace-graph.json' },
+        window: {
+            addEventListener() { /* host messages unused here */ },
+            MOCK_DATA_URI: 'https://x/media/workspace-graph.json',
+            vscode: { postMessage: (msg: any) => postMessages.push(msg) }
+        },
         // Real values parsed out of style.css, so the graph palette is exercised through the
         // same path the browser uses. Without this the whole themeColor() branch silently
         // fell back to its literals and the theming code was never actually run.
         getComputedStyle: () => ({
             getPropertyValue: (name: string) => themeVars[name] ?? ''
         }),
-        HTMLElement: class { },
+        HTMLElement: SandboxHTMLElement,
         cytoscape,
         fetch: async (uri: string) => {
             fetches.push(uri);
@@ -217,14 +252,19 @@ function run(options: Options = {}): Harness {
     assert.ok(domReady, 'DOMContentLoaded handler never registered');
     (domReady as unknown as () => void)();
 
-    const fileNode = {
-        data: () => ({ id: 'file1', label: 'todo-app.js', type: 'file', flowchart: 'todo-app', filePath: 'src/todo-app.js', line: 1, pseudocode: 'p' }),
-        // neighbourhood() is called by the tap handler to collect connected nodes for the
-        // details panel. Return an empty collection so the handler doesn't throw in tests.
-        neighbourhood: (_selector: string) => ({ map: () => [] }),
-        addClass: (_cls: string) => {},
-        removeClass: (_cls: string) => {}
-    };
+    function makeNode(data: Record<string, unknown>) {
+        return {
+            data: () => data,
+            neighbourhood: (_selector: string) => ({ map: () => [] }),
+            addClass: (_cls: string) => {},
+            removeClass: (_cls: string) => {}
+        };
+    }
+
+    const fileNode = makeNode({
+        id: 'file1', label: 'todo-app.js', type: 'file',
+        flowchart: 'todo-app', filePath: 'src/todo-app.js', line: 1, pseudocode: 'p'
+    });
 
     return {
         els,
@@ -235,6 +275,7 @@ function run(options: Options = {}): Harness {
         lastStyle,
         handlers,
         cytoscapeOptions,
+        postMessages,
         hasTapHandler: () => typeof tapHandler === 'function',
         dbltap: () => {
             assert.ok(handlers.dbltap, 'no dbltap handler - double click would do nothing');
@@ -243,6 +284,20 @@ function run(options: Options = {}): Harness {
         tap: () => {
             assert.ok(tapHandler, 'no tap handler registered - clicking a node would do nothing');
             (tapHandler as unknown as (evt: any) => void)({ target: fileNode });
+        },
+        tapNodeWith: (data: Record<string, unknown>) => {
+            assert.ok(tapHandler, 'no tap handler registered');
+            (tapHandler as unknown as (evt: any) => void)({ target: makeNode(data) });
+        },
+        clickOpenInIde: () => {
+            const nodeInfo = els.nodeInfo;
+            assert.ok(nodeInfo.listeners.length > 0, '#nodeInfo has no click listener');
+            // Find the button child that carries a filePath in its dataset.
+            const btn = nodeInfo.children.find((c) => 'filePath' in c.dataset);
+            assert.ok(btn, 'no Open in IDE button found in #nodeInfo');
+            // The listener checks instanceof HTMLElement; ensure the btn passes.
+            Object.setPrototypeOf(btn, SandboxHTMLElement.prototype);
+            nodeInfo.listeners[0]({ target: btn });
         },
         fire: (id: string) => {
             const el = els[id];
@@ -649,5 +704,104 @@ describe('large graphs', () => {
         const h = run({ nodeCount: 10 });
         await settle();
         assert.strictEqual(h.layoutsUsed[0], 'cose');
+    });
+});
+
+describe('Open in IDE — button rendering', () => {
+    it('renders an Open in IDE button when the node has a filePath', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 5, pseudocode: '' });
+        const btn = h.els.nodeInfo.children.find((c) => c.className.includes('btn-open-ide'));
+        assert.ok(btn, 'Open in IDE button not rendered for a node with a filePath');
+    });
+
+    it('does NOT render an Open in IDE button when the node has no filePath', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: '', pseudocode: '' });
+        const btn = h.els.nodeInfo.children.find((c) => c.className.includes('btn-open-ide'));
+        assert.ok(!btn, 'Open in IDE button must not appear when filePath is absent');
+    });
+
+    it('stores the filePath on the button dataset', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 7, pseudocode: '' });
+        const btn = h.els.nodeInfo.children.find((c) => 'filePath' in c.dataset);
+        assert.ok(btn, 'button has no dataset.filePath');
+        assert.strictEqual(btn!.dataset.filePath, 'src/foo.ts');
+    });
+
+    it('stores the line on the button dataset, defaulting to 1', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 42, pseudocode: '' });
+        const btn = h.els.nodeInfo.children.find((c) => 'filePath' in c.dataset);
+        assert.strictEqual(btn?.dataset.line, '42');
+    });
+
+    it('defaults line to 1 in the dataset when the node supplies no line', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', pseudocode: '' });
+        const btn = h.els.nodeInfo.children.find((c) => 'filePath' in c.dataset);
+        assert.strictEqual(btn?.dataset.line, '1');
+    });
+});
+
+describe('Open in IDE — message sending', () => {
+    it('sends an openFile message when the button is clicked', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 5, pseudocode: '' });
+        h.clickOpenInIde();
+        const msg = h.postMessages.find((m) => m.type === 'openFile');
+        assert.ok(msg, 'no openFile message was posted');
+    });
+
+    it('message type is exactly "openFile"', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 1, pseudocode: '' });
+        h.clickOpenInIde();
+        const msg = h.postMessages.find((m) => m.type === 'openFile');
+        assert.strictEqual(msg?.type, 'openFile');
+    });
+
+    it('message filePath matches the node filePath', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 3, pseudocode: '' });
+        h.clickOpenInIde();
+        const msg = h.postMessages.find((m) => m.type === 'openFile');
+        assert.strictEqual(msg?.filePath, 'src/foo.ts');
+    });
+
+    it('message line is a number matching the node line', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 42, pseudocode: '' });
+        h.clickOpenInIde();
+        const msg = h.postMessages.find((m) => m.type === 'openFile');
+        assert.strictEqual(msg?.line, 42);
+    });
+
+    it('message line defaults to 1 when the node has no line', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', pseudocode: '' });
+        h.clickOpenInIde();
+        const msg = h.postMessages.find((m) => m.type === 'openFile');
+        assert.strictEqual(msg?.line, 1);
+    });
+
+    it('message carries no extra fields beyond type, filePath, and line', async () => {
+        const h = run();
+        await settle();
+        h.tapNodeWith({ id: 'n1', label: 'foo.ts', type: 'file', filePath: 'src/foo.ts', line: 1, pseudocode: '' });
+        h.clickOpenInIde();
+        const msg = h.postMessages.find((m) => m.type === 'openFile');
+        assert.deepStrictEqual(Object.keys(msg).sort(), ['filePath', 'line', 'type']);
     });
 });
