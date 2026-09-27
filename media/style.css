@@ -113,8 +113,9 @@ body, html {
     display: flex;
     flex-direction: column;
     padding: 20px 16px 20px 18px;
-    gap: 0;
+    gap: 10px;
     position: relative;
+    overflow-y: auto;
 }
 
 /* Thin accent bar along the top of the sidebar */
@@ -346,6 +347,7 @@ body, html {
 
 #nodeInfo {
     transition: all var(--transition);
+    font-size: var(--ai-font-size, 12px);
 }
 
 .node-header {
@@ -392,7 +394,7 @@ body, html {
 
 .pseudocode-content,
 .node-description {
-    font-size: 12px;
+    font-size: var(--ai-font-size, 12px);
     color: var(--vscode-editor-foreground, var(--text-secondary));
     line-height: 1.65;
     background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.03));
@@ -512,7 +514,7 @@ body, html {
 
 .agent-empty {
     color: var(--vscode-descriptionForeground, var(--text-muted));
-    font-size: 12px;
+    font-size: var(--ai-font-size, 12px);
     text-align: center;
     padding: 16px 8px;
 }
@@ -520,7 +522,7 @@ body, html {
 .agent-message {
     border-radius: var(--radius);
     padding: 8px 10px;
-    font-size: 12px;
+    font-size: var(--ai-font-size, 12px);
     line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
@@ -678,4 +680,80 @@ body, html {
     width: 13px;
     height: 13px;
     flex-shrink: 0;
+}
+
+/* ─── Preference Controls (UI Scale / Font Size) ─── */
+
+.pref-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 9px 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--vscode-editorWidget-border, var(--border-subtle));
+    border-radius: var(--radius-sm);
+}
+
+.pref-group-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.4px;
+    font-weight: 700;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+}
+
+.pref-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.pref-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 26px;
+    height: 26px;
+    padding: 0 5px;
+    background: var(--vscode-editorWidget-background, rgba(255,255,255,0.05));
+    color: var(--vscode-editor-foreground, var(--text-secondary));
+    border: 1px solid var(--vscode-editorWidget-border, var(--border));
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.pref-btn:hover {
+    background: rgba(29, 111, 216, 0.18);
+    border-color: var(--cyan-dim);
+    color: var(--cyan);
+}
+
+.pref-btn:active {
+    transform: scale(0.93);
+}
+
+.pref-btn-reset {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+.pref-value {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cyan, #00d4ff);
+    letter-spacing: 0.3px;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
+.pref-value-center {
+    margin-left: 0;
+    min-width: 34px;
+    text-align: center;
 }

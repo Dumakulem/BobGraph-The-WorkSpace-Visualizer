@@ -954,6 +954,115 @@ let isLoading = false;
         }
     });
 
+    // ── UI Scale & Font Size preferences ─────────────────────────────────────
+    //
+    // Preferences are stored via vscode.setState / vscode.getState which the
+    // VS Code webview API persists across panel close/reopen within a session,
+    // and also serialises to globalState so values survive extension restarts.
+    //
+    // UI Scale: scales .sidebar-left and .sidebar-right using CSS zoom.
+    //   Range: 60 % – 160 %, step 10 %.  Default: 100 %.
+    //
+    // Font Size: controls the font-size of AI-generated text in the right panel
+    //   (node explanation + agent messages).  Range: 9 px – 20 px, step 1 px.
+    //   Default: 12 px.
+
+    const SCALE_DEFAULT = 100;
+    const SCALE_STEP    = 10;
+    const SCALE_MIN     = 60;
+    const SCALE_MAX     = 160;
+
+    const FONT_DEFAULT  = 12;
+    const FONT_STEP     = 1;
+    const FONT_MIN      = 9;
+    const FONT_MAX      = 20;
+
+    // Load persisted state (falls back to defaults on first run).
+    const _savedState  = window.vscode?.getState() ?? {};
+    let uiScale   = typeof _savedState.uiScale   === 'number' ? _savedState.uiScale   : SCALE_DEFAULT;
+    let aiFontSize = typeof _savedState.aiFontSize === 'number' ? _savedState.aiFontSize : FONT_DEFAULT;
+
+    /** Persist the current preference values via the VS Code webview state API. */
+    function savePrefs() {
+        window.vscode?.setState({ ...(window.vscode?.getState() ?? {}), uiScale, aiFontSize });
+    }
+
+    /** Apply uiScale to the sidebar panels only.
+     *
+     *  IMPORTANT: zoom must NEVER be applied to <body> or .app-container.
+     *  Doing so causes three regressions:
+     *    1. The grid layout (100vw × 100vh) no longer fills the viewport, cutting
+     *       off the right sidebar.
+     *    2. The zoom-control overlay is displaced.
+     *    3. Cytoscape's mouse-hit detection uses getBoundingClientRect(); a body
+     *       zoom shifts the reported rect away from the actual pointer position,
+     *       making hover/click land on the wrong node.
+     *  Scoping zoom to .sidebar-left and .sidebar-right avoids all three issues
+     *  because the sidebars are independent flex columns — their zoom does not
+     *  affect the grid track sizes or the canvas coordinate space.
+     */
+    function applyScale(scale) {
+        const ratio = (scale / 100).toString();
+        const left  = document.querySelector('.sidebar-left');
+        const right = document.querySelector('.sidebar-right');
+        if (left)  left.style.zoom  = ratio;
+        if (right) right.style.zoom = ratio;
+        const display = document.getElementById('scaleDisplay');
+        if (display) display.textContent = scale + '%';
+    }
+
+    /** Apply aiFontSize to AI-generated text in the right panel.
+     *
+     *  Setting fontSize directly on #nodeInfo would be wiped every time
+     *  showNodeDetails() rebuilds its innerHTML. Instead we set a CSS custom
+     *  property on the stable .sidebar-right ancestor; the relevant CSS rules
+     *  read var(--ai-font-size) so the value survives any DOM reconstruction.
+     */
+    function applyFontSize(size) {
+        const sidebarRight = document.querySelector('.sidebar-right');
+        if (sidebarRight) sidebarRight.style.setProperty('--ai-font-size', size + 'px');
+        const display = document.getElementById('fontDisplay');
+        if (display) display.textContent = size + 'px';
+    }
+
+    // Apply persisted preferences immediately on load.
+    applyScale(uiScale);
+    applyFontSize(aiFontSize);
+
+    // ── Wire up UI Scale buttons ──────────────────────────────────────────────
+    document.getElementById('scaleDecBtn')?.addEventListener('click', () => {
+        uiScale = Math.max(SCALE_MIN, uiScale - SCALE_STEP);
+        applyScale(uiScale);
+        savePrefs();
+    });
+    document.getElementById('scaleIncBtn')?.addEventListener('click', () => {
+        uiScale = Math.min(SCALE_MAX, uiScale + SCALE_STEP);
+        applyScale(uiScale);
+        savePrefs();
+    });
+    document.getElementById('scaleResetBtn')?.addEventListener('click', () => {
+        uiScale = SCALE_DEFAULT;
+        applyScale(uiScale);
+        savePrefs();
+    });
+
+    // ── Wire up Font Size buttons ─────────────────────────────────────────────
+    document.getElementById('fontDecBtn')?.addEventListener('click', () => {
+        aiFontSize = Math.max(FONT_MIN, aiFontSize - FONT_STEP);
+        applyFontSize(aiFontSize);
+        savePrefs();
+    });
+    document.getElementById('fontIncBtn')?.addEventListener('click', () => {
+        aiFontSize = Math.min(FONT_MAX, aiFontSize + FONT_STEP);
+        applyFontSize(aiFontSize);
+        savePrefs();
+    });
+    document.getElementById('fontResetBtn')?.addEventListener('click', () => {
+        aiFontSize = FONT_DEFAULT;
+        applyFontSize(aiFontSize);
+        savePrefs();
+    });
+
     // Render the bundled graph immediately while the host loads the validated
     // workspace graph. The host response replaces this fallback when available.
     renderWorkspaceGraph();
