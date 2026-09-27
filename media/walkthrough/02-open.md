@@ -4,7 +4,7 @@
 
 Click the link below — or run **BobGraph: Open Workspace Visualizer** from the Command Palette (`Ctrl+Shift+P`) at any time.
 
-[Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)
+[Open Workspace Visualizer](command:bobgraph.openVisualizer)
 
 The panel opens beside your editor and loads the workspace graph automatically.
 

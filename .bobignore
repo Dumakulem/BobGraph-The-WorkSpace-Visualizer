@@ -1,5 +1,5 @@
 # ============================================
-# BOB AI ASSISTANT - SECURITY IGNORE PATTERNS
+# BOBGRAPH ASSISTANT - SECURITY IGNORE PATTERNS
 # ============================================
 # Prevents Bob from logging credentials in session history
 # DO NOT REMOVE OR MODIFY THESE PATTERNS

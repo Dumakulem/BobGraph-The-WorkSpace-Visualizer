@@ -38,7 +38,7 @@ npm run compile
 
 ### Project Layout
 ```
-bobai-visualizer/
+bobgraph/
 ├── src/
 │   ├── extension.ts              Extension host: creates the panel, injects asset URIs
 │   └── test/                    Unit and integration test suites

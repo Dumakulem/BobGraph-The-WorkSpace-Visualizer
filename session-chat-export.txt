@@ -213,7 +213,7 @@ TASK 3: Complete provider-independent graph generation
 - Support required fields id, label, type, filePath.
 - Add optional metadata only where the active UI uses it: line, symbol,
   pseudocode, flowchart.
-- Add bobai-visualizer.generateWorkspaceGraph.
+- Add bobgraph.generateWorkspaceGraph.
 - Use a deterministic mock provider.
 - Preserve an existing graph when new output is invalid.
 - Verify rendering, selection, Open in IDE, explanations, refresh, and zoom.

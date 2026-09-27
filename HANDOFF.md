@@ -160,7 +160,7 @@ the shape in section 2 and nothing in the frontend needs to change.
 npm install
 npm test                      # unit tests: under a second, no downloads
 npm run pretest               # compile + lint
-npx @vscode/vsce package      # -> bobai-visualizer-0.0.1.vsix
+npx @vscode/vsce package      # -> bobgraph-0.0.1.vsix
 ```
 
 `npm test` prints its own count, so trust that over any number written in these docs.
