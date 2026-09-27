@@ -228,7 +228,7 @@ request cannot freeze navigation permanently.
 
 ## 8. Entry points and onboarding
 
-The extension registers exactly one command, `bobai-visualizer.openVisualizer`, shown in the
+The extension registers exactly one command, `bobgraph.openVisualizer`, shown in the
 palette as **BobGraph: Open Workspace Visualizer**. `package.json` declares
 `activationEvents: []` deliberately: since VS Code 1.74 a contributed command activates its
 extension on demand, so no explicit activation event is needed.
@@ -243,9 +243,9 @@ Onboarding copy is contributed, not hardcoded:
 
 Two linking mechanisms tie them together:
 
-- `[Open Workspace Visualizer](command:bobai-visualizer.openVisualizer)` inside walkthrough
+- `[Open Workspace Visualizer](command:bobgraph.openVisualizer)` inside walkthrough
   markdown renders as a clickable button.
-- `completionEvents: ["onCommand:bobai-visualizer.openVisualizer"]` marks a step done once
+- `completionEvents: ["onCommand:bobgraph.openVisualizer"]` marks a step done once
   the user actually runs the command, instead of when they merely click through it.
 
 ### How the intro actually gets shown
@@ -281,12 +281,12 @@ So the intro is covered three ways, in descending order of reliability:
 | Mechanism | Reliability |
 | --- | --- |
 | First-run `showInformationMessage` in `activate()`, gated on a `globalState` flag | **Ours. Always works, including F5, and only for us** |
-| `bobai-visualizer.showGettingStarted` palette command | Always works |
+| `bobgraph.showGettingStarted` palette command | Always works |
 | `featuredFor: ["**"]` | Best effort; may lose to another extension |
 
 The `showInformationMessage` in `activate()` is the only one we fully own, which is why the
 onboarding is a real prompt rather than a Welcome-page popup. If you see the intro twice,
-check that `globalState` key `bobaiVisualizer.introSeen` is being persisted.
+check that `globalState` key `bobgraph.introSeen` is being persisted.
 
 **Renaming a command means changing it in two places** - `contributes.commands[].command`
 and the `registerCommand` string in `src/extension.ts`. They must match exactly or the
@@ -310,7 +310,7 @@ The steps were originally written with a `"content"` field, which is not in the 
 Code logged this once and dropped the **entire** walkthrough:
 
 ```
-ERR missing media in walkthrough step: bobaiVisualizer.gettingStarted@welcome
+ERR missing media in walkthrough step: bobgraph.gettingStarted@welcome
     at registerExtensionWalkthroughContributions
 ```
 

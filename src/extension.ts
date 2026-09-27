@@ -51,7 +51,7 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    const WALKTHROUGH_ID = 'bobaiVisualizer.gettingStarted';
+    const WALKTHROUGH_ID = 'bobgraph.gettingStarted';
     setGraphProvider(new LanguageModelGraphProvider());
 
     const showGettingStarted = () =>
@@ -65,13 +65,13 @@ export function activate(context: vscode.ExtensionContext) {
     // (verified against the 1.139 manifest schema), and the native auto-open slot is shared
     // with every other extension, so IBM Bob can and does claim it first.
     context.subscriptions.push(
-        vscode.commands.registerCommand('bobai-visualizer.showGettingStarted', showGettingStarted)
+        vscode.commands.registerCommand('bobgraph.showGettingStarted', showGettingStarted)
     );
 
     // One-time intro, owned by us rather than by the Welcome page. Fires on the first
     // activation after install and then never again - a Welcome-page popup competes with
     // every other extension and is not dismissable-per-extension.
-    const INTRO_SEEN = 'bobaiVisualizer.introSeen';
+    const INTRO_SEEN = 'bobgraph.introSeen';
     if (!context.globalState.get(INTRO_SEEN)) {
         void context.globalState.update(INTRO_SEEN, true);
         void vscode.window
@@ -88,11 +88,11 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('bobai-visualizer.openVisualizer', () => {
+        vscode.commands.registerCommand('bobgraph.openVisualizer', () => {
             // Sandbox: the webview may only read files under media/, and never via file:// or
             // relative paths. asWebviewUri is the only way to reference a local asset.
             const panel = vscode.window.createWebviewPanel(
-                'bobVisualizer',
+                'bobGraphVisualizer',
                 'BobGraph - Workspace Visualizer',
                 vscode.ViewColumn.One,
                 {
@@ -170,14 +170,14 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand(
-            'bobai-visualizer.generateWorkspaceGraph',
+            'bobgraph.generateWorkspaceGraph',
             () => {
                 void executeGenerateWorkspaceGraph();
             }
         )
     );
     context.subscriptions.push(
-        vscode.commands.registerCommand('bobai-visualizer.checkAiConnection', async () => {
+        vscode.commands.registerCommand('bobgraph.checkAiConnection', async () => {
             try {
                 const models = await checkActiveLanguageModel();
                 void vscode.window.showInformationMessage(`BobGraph language model connection is available: ${models}`);

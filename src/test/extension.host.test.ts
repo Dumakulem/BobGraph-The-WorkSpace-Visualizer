@@ -7,19 +7,19 @@ import * as vscode from 'vscode';
  * VS Code on first use.
  */
 suite('Extension activation', () => {
-    vscode.window.showInformationMessage('Running BOB AI extension tests.');
+    vscode.window.showInformationMessage('Running BobGraph extension tests.');
 
     test('activates and registers both commands', async () => {
-        const extension = vscode.extensions.getExtension('bob-ai-team.bobai-visualizer');
-        assert.ok(extension, 'extension not found - is the publisher still "bob-ai-team"?');
+        const extension = vscode.extensions.getExtension('bob-ai-team.bobgraph');
+        assert.ok(extension, 'extension not found - is the Marketplace extension id correct?');
 
         await extension.activate();
         assert.strictEqual(extension.isActive, true);
 
         const commands = await vscode.commands.getCommands(true);
         for (const id of [
-            'bobai-visualizer.openVisualizer',
-            'bobai-visualizer.showGettingStarted'
+            'bobgraph.openVisualizer',
+            'bobgraph.showGettingStarted'
         ]) {
             assert.ok(commands.includes(id), `${id} is not registered`);
         }
@@ -29,6 +29,6 @@ suite('Extension activation', () => {
         // Guards the exact bug documented in ARCHITECTURE.md section 8: a command id that
         // exists in package.json but was never registered, so the palette entry did nothing.
         const commands = await vscode.commands.getCommands(true);
-        assert.ok(commands.includes('bobai-visualizer.showGettingStarted'));
+        assert.ok(commands.includes('bobgraph.showGettingStarted'));
     });
 });

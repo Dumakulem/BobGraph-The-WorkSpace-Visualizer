@@ -75,7 +75,7 @@ describe('package manifest', () => {
     it('namespaces every contributed command', () => {
         for (const entry of contributes.commands) {
             assert.ok(
-                entry.command.startsWith('bobai-visualizer.'),
+                entry.command.startsWith('bobgraph.'),
                 `${entry.command} is not namespaced`
             );
         }
