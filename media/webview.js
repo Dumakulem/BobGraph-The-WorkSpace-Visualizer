@@ -290,6 +290,32 @@ let isLoading = false;
         return elements;
     }
 
+    /** Report intersecting node bounding boxes without changing the layout. */
+    function checkNodeOverlaps(cyInstance, viewName) {
+        const nodes = cyInstance.nodes();
+        const overlaps = [];
+
+        for (let i = 0; i < nodes.length; i++) {
+            for (let j = i + 1; j < nodes.length; j++) {
+                const a = nodes[i];
+                const b = nodes[j];
+                const aPos = a.position();
+                const bPos = b.position();
+                const overlapX = (a.outerWidth() + b.outerWidth()) / 2 - Math.abs(bPos.x - aPos.x);
+                const overlapY = (a.outerHeight() + b.outerHeight()) / 2 - Math.abs(bPos.y - aPos.y);
+
+                if (overlapX > 0 && overlapY > 0) {
+                    overlaps.push(`${a.id()} and ${b.id()}`);
+                }
+            }
+        }
+
+        if (overlaps.length > 0) {
+            console.warn(`Node overlaps detected in ${viewName} view: ${overlaps.join(', ')}`);
+        }
+        return overlaps;
+    }
+
     function getLayoutOptions(layoutType, nodeCount = 0) {
         if (layoutType === 'dagre') {
             if (!hasDagre) {
@@ -420,6 +446,9 @@ let isLoading = false;
             cy.zoom(1);
             cy.center();
         }
+
+        // Check both workspace and flowchart layouts, but leave positions to the layout engine.
+        checkNodeOverlaps(cy, layoutType === 'dagre' ? 'flowchart' : 'workspace');
 
         // A webview panel can resize after Cytoscape has created its canvas (especially
         // while the sidebars and fonts settle). Keep the backing store aligned with the

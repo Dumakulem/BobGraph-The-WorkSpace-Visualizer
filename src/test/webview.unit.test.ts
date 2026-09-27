@@ -88,6 +88,8 @@ interface Harness {
     lastStyle: any[];
     handlers: Record<string, (evt: any) => void>;
     cytoscapeOptions: any[];
+    warnings: string[];
+    positionWrites: Array<{ id: string; position: { x: number; y: number } }>;
     /** Messages posted to the extension host via window.vscode.postMessage. */
     postMessages: any[];
     tap(): void;
@@ -109,6 +111,7 @@ interface Options {
     nodeCount?: number;
     model?: unknown;
     realCytoscape?: boolean;
+    overlappingNodes?: boolean;
 }
 
 function workspaceWithEveryType() {
@@ -126,7 +129,7 @@ function workspaceWithEveryType() {
 }
 
 function run(options: Options = {}): Harness {
-    const { flowchartFails = false, dagrePlugin = 'ok', nodeCount = 1, model } = options;
+    const { flowchartFails = false, dagrePlugin = 'ok', nodeCount = 1, model, overlappingNodes = false } = options;
     const lastElements: any[] = [];
     const lastStyle: any[] = [];
 
@@ -140,6 +143,9 @@ function run(options: Options = {}): Harness {
     const layoutsUsed: string[] = [];
     const handlers: Record<string, (evt: any) => void> = {};
     const cytoscapeOptions: any[] = [];
+    const warnings: string[] = [];
+    const positionWrites: Array<{ id: string; position: { x: number; y: number } }> = [];
+    let savedState: Record<string, unknown> = {};
     let tapHandler: ((evt: any) => void) | null = null;
     let domReady: (() => void) | null = null;
 
@@ -149,6 +155,24 @@ function run(options: Options = {}): Harness {
             lastElements.push(...(opts.elements ?? []));
             lastStyle.push(...(opts.style ?? []));
             cytoscapeOptions.push(opts);
+            const nodes = (opts.elements ?? [])
+                .filter((element: any) => element.data?.source === undefined)
+                .map((element: any, index: number) => {
+                    const id = element.data.id;
+                    let position = { x: overlappingNodes ? 0 : index * 300, y: 0 };
+                    return {
+                        id: () => id,
+                        position(value?: { x: number; y: number }) {
+                            if (value) {
+                                position = value;
+                                positionWrites.push({ id, position: value });
+                            }
+                            return position;
+                        },
+                        outerWidth: () => 140,
+                        outerHeight: () => 50
+                    };
+                });
             return {
                 destroy() { /* replaced between renders */ },
                 on(event: string, selector: string, cb: (evt: any) => void) {
@@ -158,6 +182,7 @@ function run(options: Options = {}): Harness {
                     }
                 },
                 container: () => [{ style: {} }],
+                nodes: () => nodes,
                 layout: () => ({ run() { /* no animation in tests */ } })
             };
         },
@@ -201,9 +226,13 @@ function run(options: Options = {}): Harness {
     const sandbox: any = {
         // The real console is passed through so an unexpected throw is visible instead of
         // being swallowed by a no-op stub. A silent catch once hid a real regression.
-        console,
+        console: {
+            ...console,
+            warn: (...args: unknown[]) => warnings.push(args.join(' '))
+        },
         document: {
             getElementById: (id: string) => els[id] ?? null,
+            querySelector: () => null,
             createElement: () => {
                 const el = makeEl('new');
                 Object.setPrototypeOf(el, SandboxHTMLElement.prototype);
@@ -218,7 +247,11 @@ function run(options: Options = {}): Harness {
         window: {
             addEventListener() { /* host messages unused here */ },
             MOCK_DATA_URI: 'https://x/media/workspace-graph.json',
-            vscode: { postMessage: (msg: any) => postMessages.push(msg) }
+            vscode: {
+                postMessage: (msg: any) => postMessages.push(msg),
+                getState: () => savedState,
+                setState: (state: Record<string, unknown>) => { savedState = state; }
+            }
         },
         // Real values parsed out of style.css, so the graph palette is exercised through the
         // same path the browser uses. Without this the whole themeColor() branch silently
@@ -275,6 +308,8 @@ function run(options: Options = {}): Harness {
         lastStyle,
         handlers,
         cytoscapeOptions,
+        warnings,
+        positionWrites,
         postMessages,
         hasTapHandler: () => typeof tapHandler === 'function',
         dbltap: () => {
@@ -546,6 +581,34 @@ describe('opening a flowchart', () => {
         assert.ok(layout.nodeRepulsion >= 9000, 'workspace nodes need a strong repulsion field');
         assert.ok(layout.nodeOverlap >= 30, 'workspace layout should reserve space around nodes');
         assert.ok(layout.idealEdgeLength >= 140, 'workspace edges need room between connected nodes');
+    });
+
+    it('reports workspace node overlaps without moving nodes', async () => {
+        const h = run({ nodeCount: 2, overlappingNodes: true });
+        await settle();
+        assert.ok(
+            h.warnings.some((warning) => warning.includes('workspace view: file0 and file1')),
+            `workspace overlap was not reported: ${JSON.stringify(h.warnings)}`
+        );
+        assert.deepStrictEqual(h.positionWrites, [], 'the overlap checker must not change node positions');
+    });
+
+    it('reports flowchart node overlaps without moving nodes', async () => {
+        const h = run({ nodeCount: 2, overlappingNodes: true });
+        await settle();
+        h.dbltap();
+        await settle();
+        assert.ok(
+            h.warnings.some((warning) => warning.includes('flowchart view: file0 and file1')),
+            `flowchart overlap was not reported: ${JSON.stringify(h.warnings)}`
+        );
+        assert.deepStrictEqual(h.positionWrites, [], 'the overlap checker must not change node positions');
+    });
+
+    it('does not report nodes whose bounding boxes are separated', async () => {
+        const h = run({ nodeCount: 2 });
+        await settle();
+        assert.deepStrictEqual(h.warnings, []);
     });
 
     it('uses a vertical flowchart layout without shrinking the initial view', async () => {
