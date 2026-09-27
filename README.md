@@ -1,270 +1,262 @@
-# BobGraph - Workspace Visualizer
+# BobGraph — Workspace Visualizer
 
-BobGraph is a VS Code extension that turns a codebase into an interactive graph. It
-helps developers understand an unfamiliar project by showing file dependencies and
-AI-generated explanations of the code.
+> **Turn any codebase into a navigable graph.** BobGraph renders your project as an interactive dependency map, lets you drill into any file's internal flowchart, and puts an AI-written plain-language summary of any node one click away — so you spend less time reading files and more time understanding the code.
 
-BobGraph is primarily a **file dependency visualizer**. It is not a complete runtime
-or web-application architecture analyzer.
+---
 
-## What it can do
+## Quick start
 
-### Workspace graph
+### Install
 
-The workspace view:
+Install from the VS Code Marketplace — search **BobGraph** or use the `.vsix` directly:
 
-- Scans the open workspace for supported files.
-- Creates one graph node for each discovered file.
-- Uses the file's relative path as its node ID.
-- Shows relationships between files, mainly imports and dependencies.
-- Opens the source file in VS Code when a node is selected.
-- Uses an interactive Cytoscape graph layout.
-
-For example:
-
-```text
-src/App.tsx ── imports ──> src/components/Header.tsx
+```
+Extensions panel → ⋯ → Install from VSIX… → bobgraph-0.0.1.vsix
 ```
 
-The generated workspace graph is saved as:
+### Prerequisite — language model
 
-```text
-.bobgraph/workspace-graph.json
+BobGraph uses VS Code's Language Model API. Any of these works:
+
+| Provider | How to enable |
+|---|---|
+| **GitHub Copilot** | Sign in to Copilot in VS Code, then allow BobGraph to use language models when prompted |
+| **IBM Bob** | IBM Bob registers itself with VS Code; no extra configuration needed |
+| Other compatible provider | Install it; VS Code exposes it automatically |
+
+Run **BobGraph: Check Language Model Connection** from the Command Palette to verify the connection before generating your first graph.
+
+### Generate and open
+
+1. Open your project folder in VS Code (`File → Open Folder`).
+2. Run **BobGraph: Generate Workspace Graph** from the Command Palette (`Ctrl+Shift+P`).
+3. Run **BobGraph: Open Workspace Visualizer** — or click **Open Workspace Visualizer** in the welcome notification.
+4. The graph loads automatically. Click any node to read its details and AI summary.
+
+The generated graph is saved as `.bobgraph/workspace-graph.json` in your project. Re-run **Generate Workspace Graph** at any time to refresh it after code changes.
+
+---
+
+## The interface
+
+### Three-panel layout
+
+```
+┌──────────────┬──────────────────────────────┬──────────────────────┐
+│  Left panel  │       Graph canvas           │    Right panel       │
+│              │                              │                      │
+│  Refresh     │   Interactive Cytoscape      │  Node details        │
+│  Export      │   graph — pan, zoom,         │  Pseudocode summary  │
+│  controls    │   click, double-click        │  AI Assistant        │
+└──────────────┴──────────────────────────────┴──────────────────────┘
 ```
 
-### File flowchart
+### Node colours
 
-Selecting a file can generate a more detailed semantic flowchart. Instead of creating
-one node per line, BobGraph asks the language model to identify meaningful concepts
-such as:
+| Colour | Node type | What it represents |
+|---|---|---|
+| 🔵 Blue rectangle | `file` | One source file in your workspace |
+| 🟣 Purple rounded box | `class` | A class or interface |
+| 🩵 Sky ellipse | `method` | A method on a class |
+| 🟢 Green ellipse | `function` | A standalone function |
+| 🔴 Red diamond | `decision` | A branch, condition, or decision point |
+| 🩵 Cyan pill | `start_end` | Module entry or exit point |
 
-- Functions and methods
-- Classes and interfaces
-- Important properties or state
-- Decisions and branches
-- Transformations
-- External services
-- Module entry and exit points
+### Edge types
 
-The flowchart edges can describe relationships such as `calls`, `contains`, `reads`,
-`writes`, `transforms`, `returns`, and `branches to`.
+| Arrow style | Relation | Meaning |
+|---|---|---|
+| Blue | `imports` | This file imports that file |
+| Teal | `calls` | This function/method calls that one |
+| Grey | `contains` | This node owns/contains that node |
+| Light | `flow` | Execution flows from here to there |
 
-### AI explanations
+---
 
-BobGraph can use a VS Code language model to:
+## Workspace graph
 
-- Infer dependencies from source excerpts.
-- Generate file flowcharts.
-- Explain the purpose and responsibilities of a selected node or file.
-- Answer questions about the selected file.
+The workspace view shows your entire project at a glance:
 
-The language model must be available through the VS Code Language Model API, for
-example through GitHub Copilot or another compatible provider.
+- **One node per file** — every supported file in your workspace becomes a node.
+- **Edges show dependencies** — arrows connect files that import each other.
+- **Hover** any node to dim everything else and highlight its direct connections.
+- **Single-click** a node to load its details and AI pseudocode in the right panel.
+- **Double-click** a file node to drill into its internal flowchart.
 
-If AI dependency inference fails, BobGraph falls back to deterministic detection of
-relative imports in TypeScript, JavaScript, and Python files.
+### How the graph is built
 
-## How graph generation works
-
-```text
-Scan workspace files
+```
+Scan workspace files (up to 300)
         ↓
 Create one node per file
         ↓
 Read short source excerpts
         ↓
-Ask the language model to infer relationships
+Ask the language model to infer import relationships
         ↓
-Fall back to relative-import detection if needed
+Fall back to deterministic relative-import detection
         ↓
-Remove invalid and duplicate edges
+Remove invalid edges (unknown nodes, duplicates)
         ↓
-Validate and save the graph
+Validate and save .bobgraph/workspace-graph.json
 ```
 
-The deterministic fallback recognizes patterns such as:
+The deterministic fallback recognises:
 
 ```ts
-import Button from "./Button";
-const config = require("./config");
-from .helpers import formatValue;
+import Button from "./Button";         // TypeScript / JavaScript
+const config = require("./config");    // CommonJS
+from .helpers import formatValue       // Python
 ```
 
-Only relationships whose source and target files are known workspace nodes are kept.
-This prevents an invalid AI response from creating references to files that do not
-exist in the graph.
+Only relationships between known workspace nodes are kept — an AI hallucination cannot create a phantom file.
 
-## Supported files and scan limits
+---
 
-The scanner recognizes common source, configuration, documentation, and web files,
-including:
+## File flowchart
 
-```text
-TypeScript, JavaScript, JSX, TSX, Python, Java, C#, C/C++, Go, Rust,
-Ruby, PHP, Swift, Kotlin, Scala, HTML, CSS, SCSS, Less, JSON, YAML,
-TOML, XML, Markdown, text, shell scripts, SQL, GraphQL, and Protocol Buffers
+Double-clicking any file node replaces the workspace graph with a semantic flowchart of that file:
+
+- **Top-to-bottom dagre layout** — entry → decisions → exit.
+- **One node per concept**, not per source line (classes, functions, decisions, external calls).
+- **Breadcrumb** above the canvas shows `Workspace › filename.ts`.
+- Click **← Back to Workspace** to return to the overview.
+- Click **Refresh Graph** to re-run the layout if nodes look cramped.
+
+If the file has no flowchart data available, the panel stays on the workspace view and explains why in the details panel — you are never left on a half-loaded screen.
+
+---
+
+## AI features
+
+### Node explanation (pseudocode)
+
+Click any node to load a plain-language explanation into the right panel. The explanation covers:
+
+- What this code element does.
+- Its main responsibilities.
+- Important inputs, outputs, and dependencies.
+
+### AI Assistant
+
+Select a node, type a question in the **Ask the AI assistant** input, and press **Send** (or `Enter`). The assistant answers in the context of that node's source file.
+
+Example questions:
+- *"What does this function return when the list is empty?"*
+- *"Which other files depend on this one?"*
+- *"Explain the error handling in this class."*
+
+### Open in IDE
+
+Every node details panel includes an **Open in IDE** button. It opens the source file in your editor with the cursor on the exact line — the fast path from graph to code.
+
+---
+
+## Supported files
+
+The scanner picks up common source, configuration, documentation, and web files:
+
+```
+TypeScript · JavaScript · JSX/TSX · Python · Java · C# · C/C++ · Go
+Rust · Ruby · PHP · Swift · Kotlin · Scala · HTML · CSS/SCSS/Less
+JSON · YAML/TOML/XML · Markdown · Shell scripts · SQL · GraphQL · Proto
 ```
 
-The scanner ignores common generated, dependency, and tooling directories such as
-`node_modules`, `.git`, `dist`, `build`, `out`, `.bobgraph`, `.vscode`, and
-`coverage`.
+Ignored automatically: `node_modules`, `.git`, `dist`, `out`, `build`, `.bobgraph`, `.vscode`, `coverage`, `.next`, `.nuxt`, `vendor`, `target`, and any directory starting with `.`.
 
-The current scan limit is **300 files**. Large projects may therefore have an
-incomplete workspace graph.
+Current scan limit: **300 files**. Large monorepos may have an incomplete graph.
 
-## Limitations
+---
 
-### It models files more reliably than runtime behavior
+## Commands
 
-At the workspace level, a node normally represents an entire file. A large
-`Dashboard.tsx` file containing components, hooks, event handlers, API calls, and
-state updates is still represented as one workspace node.
+Run any command from the Command Palette (`Ctrl+Shift+P`):
 
-The file flowchart provides more detail, but it is generated from a limited source
-excerpt and should be treated as an explanation rather than a formal program analysis.
+| Command | What it does |
+|---|---|
+| **BobGraph: Open Workspace Visualizer** | Opens the graph panel |
+| **BobGraph: Generate Workspace Graph** | Scans the workspace and writes `.bobgraph/workspace-graph.json` |
+| **BobGraph: Show Getting Started** | Reopens the 5-step walkthrough |
+| **BobGraph: Check Language Model Connection** | Verifies the AI provider is reachable |
 
-### Imports are not the same as application flow
+---
 
-An import graph does not fully explain a web application's runtime path:
+## Known limitations
 
-```text
-button click
-  → event handler
-  → API request
-  → server route
-  → database query
-  → response
-  → UI update
-```
+| Area | Detail |
+|---|---|
+| **File-level granularity** | Each workspace node is one file. A large file with many components still shows as a single node until you drill in. |
+| **Runtime flow not modelled** | Import graphs do not explain click → API request → database → response chains. BobGraph shows files and dependencies, not request traces. |
+| **Framework conventions** | Relationships created by convention (Next.js routing, React component registration, dependency injection, Redux stores) are often missed because they are not direct imports. |
+| **Path aliases** | `import Button from "@/components/Button"` may not resolve unless the AI infers it. The deterministic fallback only handles relative paths. |
+| **AI estimates** | The model receives short source excerpts. Important imports outside those excerpts may be missed. Treat explanations as onboarding aids, not formal analysis. |
+| **Large graphs** | Past 400 nodes the layout switches from physics (`cose`) to `grid` to stay responsive. All nodes still render. |
+| **Web assets** | CSS, images, fonts, and HTML asset references are not fully connected. |
 
-BobGraph may show the files involved, but it does not reliably construct this complete
-browser-to-server-to-database flow.
+---
 
-### Framework conventions are only partially understood
-
-Relationships created implicitly by frameworks may be missed, including:
-
-- React, Vue, Angular, or framework component registration
-- Next.js or other file-based routing
-- Express or server route registration
-- Middleware
-- Dependency injection
-- Redux, Zustand, or other state-management relationships
-- Server actions and framework-specific loaders
-- WebSocket handlers
-
-These relationships are often created by configuration, naming conventions, decorators,
-or runtime registration rather than direct imports.
-
-### Path aliases and dynamic imports may be missed
-
-The deterministic fallback focuses on relative paths such as `./Button`. It may not
-resolve aliases such as:
-
-```ts
-import Button from "@/components/Button";
-```
-
-unless the AI correctly infers the relationship. Dynamic imports whose target is
-calculated at runtime are also difficult to resolve statically.
-
-### Web assets are not fully connected
-
-The scanner can create nodes for HTML, CSS, JSON, and other assets, but the current
-relationship logic is focused mainly on TypeScript, JavaScript, and Python imports.
-It does not consistently model all relationships involving:
-
-- CSS and stylesheets
-- Images, fonts, and SVG files
-- HTML script and stylesheet references
-- Bundler entry points
-- Build-time asset transformations
-
-### AI results are estimates
-
-The language model only receives short source excerpts for workspace dependency
-inference. Important imports or relationships outside those excerpts may be missed.
-AI-generated flowcharts and explanations can also be incomplete or incorrect.
-
-Use the graph as an onboarding aid and navigation tool, not as a security report,
-compiler result, or source-of-truth architecture specification.
-
-### Large graphs become harder to read
-
-Graphs with many nodes can become visually dense. BobGraph changes its layout strategy
-for large graphs to avoid expensive physics calculations, but this improves
-responsiveness rather than readability.
-
-## Why it is not yet optimal for web applications
-
-Modern web applications are not only collections of imported files. They combine:
-
-- Client components and server components
-- Routes and page conventions
-- Browser events
-- API and RPC calls
-- Server middleware
-- Databases and external services
-- State stores
-- Build tools and aliases
-- Dynamic loading
-- Static assets
-
-BobGraph currently captures the most reliable common denominator: **files and their
-known dependencies**. It is useful for learning a codebase and finding related files,
-but it does not yet provide a complete component graph, request trace, data-flow graph,
-or deployment architecture diagram.
-
-## Getting started
-
-### For development
+## Development setup
 
 ```bash
 npm install
 npm run compile
 ```
 
-Then:
+Press `F5` in VS Code to launch an Extension Development Host, then:
 
-1. Open this project in VS Code.
-2. Press `F5` to start an Extension Development Host.
-3. Open a project in the new VS Code window.
-4. Run **BobGraph: Generate Workspace Graph**.
-5. Run **BobGraph: Open Workspace Visualizer**.
-6. Select a file node to inspect it and open its flowchart.
+1. Open any project folder in the new window.
+2. Run **BobGraph: Generate Workspace Graph**.
+3. Run **BobGraph: Open Workspace Visualizer**.
 
-### Useful commands
+### Scripts
 
-```bash
-npm run compile  # Compile TypeScript
-npm run lint     # Run ESLint
-npm test         # Compile and run unit tests
-npm run watch    # Compile continuously during development
-```
+| Command | Purpose |
+|---|---|
+| `npm run compile` | Compile TypeScript |
+| `npm run watch` | Compile continuously |
+| `npm run lint` | Run ESLint |
+| `npm test` | Compile and run unit tests |
+| `npm run test:integration` | Run VS Code integration tests |
+
+---
 
 ## Project structure
 
-```text
+```
 src/
-├── extension.ts              VS Code commands, webview, and messages
-├── graphProvider.ts           Graph-generation provider interface
+├── extension.ts              Commands, webview panel, message routing
+├── graphProvider.ts          Provider interface, LanguageModelGraphProvider, MockGraphProvider
+├── openFile.ts               Webview → IDE file-opening with path validation
 └── bob/
-    ├── workspaceScanner.ts    Workspace file discovery
-    ├── graphBuilder.ts        File nodes and deterministic import edges
-    ├── bobAdapter.ts          AI integration and graph generation
-    ├── graphStore.ts          Graph schema, validation, and persistence
-    └── explainNode.ts          Safe source-file path resolution
+    ├── bobAdapter.ts         VS Code Language Model API integration
+    ├── graphBuilder.ts       Node construction and deterministic import edges
+    ├── graphStore.ts         Schema types, validation, read/write
+    ├── workspaceScanner.ts   Workspace file discovery
+    └── explainNode.ts        Safe workspace-relative path resolution
 
 media/
-├── webview.html               Visualizer markup
-├── webview.js                 Cytoscape graph UI
-└── style.css                  Visualizer styling
+├── webview.html              Visualizer markup
+├── webview.js                Cytoscape graph UI, drill-down, AI assistant
+├── style.css                 VS Code theme-aware styles
+├── icon.png                  Extension icon
+├── workspace-graph.json      Sample workspace graph (bundled)
+├── flowcharts/               Sample per-file flowcharts (bundled)
+│   ├── todo-app.json
+│   └── storage-util.json
+└── walkthrough/              Getting-started step bodies (editable without rebuild)
+    ├── 01-welcome.md
+    ├── 02-open.md
+    ├── 03-workspace.md
+    ├── 04-drilldown.md
+    └── 05-pseudocode.md
 ```
 
-For implementation details about the VS Code webview boundary and message flow, see
-[`ARCHITECTURE.md`](./ARCHITECTURE.md). For the graph data contract, see
-[`HANDOFF.md`](./HANDOFF.md).
+For the full implementation notes — webview sandbox, CSP directives, dagre wiring, data contract, message protocol — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
+For the graph JSON schema and the `loadModel` message seam, see [`HANDOFF.md`](./HANDOFF.md).
+
+---
 
 ## License
 
-This project is licensed under the MIT License.
+MIT — see [`LICENSE`](./LICENSE).
