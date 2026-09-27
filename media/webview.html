@@ -34,7 +34,7 @@
                     <span class="control-item-value">Full</span>
                 </div>
                 <div class="control-item control-item-hint">
-                    <span>Bob 2.0 analysis</span>
+                    <span>BobGraph Analysis</span>
                     <span>sample data</span>
                 </div>
                 <button class="btn" id="refreshBtn">
@@ -55,10 +55,11 @@
             <div class="pref-group">
                 <div class="pref-group-label">UI Scale</div>
                 <div class="pref-row">
-                    <button class="pref-btn" id="scaleDecBtn" title="Decrease UI scale">−</button>
+                    <button class="pref-btn" id="scaleDecBtn" title="Decrease UI scale">&minus;</button>
                     <button class="pref-btn pref-btn-reset" id="scaleResetBtn" title="Reset UI scale">Reset</button>
                     <button class="pref-btn" id="scaleIncBtn" title="Increase UI scale">+</button>
-                    <span class="pref-value" id="scaleDisplay">100%</span>
+                    <input class="pref-input" id="scaleDisplay" type="text" inputmode="numeric"
+                        value="100" size="4" aria-label="UI scale percentage" title="Type a scale between 60 and 160">
                 </div>
             </div>
 
@@ -66,10 +67,11 @@
             <div class="pref-group">
                 <div class="pref-group-label">Font Size</div>
                 <div class="pref-row">
-                    <button class="pref-btn" id="fontDecBtn" title="Decrease font size">−</button>
-                    <span class="pref-value pref-value-center" id="fontDisplay">12px</span>
+                    <button class="pref-btn" id="fontDecBtn" title="Decrease font size">&minus;</button>
                     <button class="pref-btn" id="fontIncBtn" title="Increase font size">+</button>
-                    <button class="pref-btn pref-btn-reset" id="fontResetBtn" title="Reset font size">↺</button>
+                    <button class="pref-btn pref-btn-reset" id="fontResetBtn" title="Reset font size">&#8635;</button>
+                    <input class="pref-input" id="fontDisplay" type="text" inputmode="numeric"
+                        value="12" size="4" aria-label="Font size in pixels" title="Type a font size between 9 and 20">
                 </div>
             </div>
         </aside>
@@ -81,11 +83,28 @@
                 <span id="breadcrumbText">Workspace &rsaquo; </span>
             </div>
             <div id="cy"></div>
+
+            <!-- Panel toggles live in the graph panel so they stay reachable
+                 even when a side panel is collapsed. -->
+            <div class="panel-toggles">
+                <button class="panel-toggle" id="helpBtn" title="What is each panel?" aria-label="Help">?</button>
+                <button class="panel-toggle" id="toggleLeftBtn" title="Show or hide the Controls panel"
+                    aria-label="Toggle Controls panel" aria-pressed="true">&#9664;</button>
+                <button class="panel-toggle" id="toggleRightBtn" title="Show or hide the Details and AI panel"
+                    aria-label="Toggle Details panel" aria-pressed="true">&#9654;</button>
+            </div>
+
+            <!-- Horizontal grab handles for the two side panels -->
+            <div class="panel-resizer panel-resizer-left" id="leftResizer"
+                role="separator" aria-orientation="vertical" aria-label="Resize Controls panel" tabindex="0"></div>
+            <div class="panel-resizer panel-resizer-right" id="rightResizer"
+                role="separator" aria-orientation="vertical" aria-label="Resize Details panel" tabindex="0"></div>
+
             <!-- Zoom controls overlay -->
             <div class="zoom-controls">
                 <button class="zoom-btn" id="zoomInBtn"  title="Zoom in">+</button>
-                <button class="zoom-btn" id="zoomFitBtn" title="Fit graph">⊡</button>
-                <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">−</button>
+                <button class="zoom-btn" id="zoomFitBtn" title="Fit graph">&#9631;</button>
+                <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">&minus;</button>
             </div>
         </main>
 
@@ -104,6 +123,10 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Drag handle between Node Details and the AI Assistant -->
+            <div class="panel-resizer-v" id="detailsResizer"
+                role="separator" aria-orientation="horizontal" aria-label="Resize Node Details panel" tabindex="0"></div>
 
             <!-- AI Assistant -->
             <div class="panel-section panel-section-grow">
@@ -127,6 +150,50 @@
 
         </aside>
     </div>
+
+    <!-- Help overlay: explains what each panel is for. -->
+    <div class="help-overlay" id="helpOverlay" role="dialog" aria-modal="true" aria-hidden="true"
+        aria-labelledby="helpTitle">
+        <div class="help-card">
+            <h2 id="helpTitle">BobGraph panels</h2>
+            <p>Every region of the visualizer, and what it does.</p>
+            <div class="help-grid">
+                <dl class="help-item">
+                    <dt>Controls</dt>
+                    <dd>Left panel. Refreshes the graph, exports it as JSON, and holds the UI
+                        Scale and Font Size preferences. Drag its right edge to resize it.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>Graph</dt>
+                    <dd>Centre panel. One node per file, edges show imports. Click a node for its
+                        details, double-click to open that file's flowchart. Use the
+                        <kbd>+</kbd>/<kbd>&minus;</kbd>/<kbd>&#9631;</kbd> buttons to zoom.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>Node Details</dt>
+                    <dd>Top of the right panel. Shows the selected node's description,
+                        connections and AI-written pseudocode, plus an
+                        <strong>Open in IDE</strong> button that jumps to the source line.
+                        Drag the divider below it to resize.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>AI Assistant</dt>
+                    <dd>Bottom of the right panel. Ask questions about the selected node.
+                        Needs a language model, so it stays empty until one is available.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>Panel toggles</dt>
+                    <dd>Top-right of the graph. <kbd>?</kbd> opens this help,
+                        <kbd>&#9664;</kbd> and <kbd>&#9654;</kbd> collapse or restore each
+                        side panel. Your layout is remembered.</dd>
+                </dl>
+            </div>
+            <div class="help-footer">
+                <button class="btn btn-secondary" id="helpCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{jsUri}}"></script>
 </body>
 </html>
