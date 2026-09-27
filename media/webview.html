@@ -34,7 +34,7 @@
                     <span class="control-item-value">Full</span>
                 </div>
                 <div class="control-item control-item-hint">
-                    <span>Bob 2.0 analysis</span>
+                    <span>BobGraph Analysis</span>
                     <span>sample data</span>
                 </div>
                 <button class="btn" id="refreshBtn">
@@ -51,25 +51,15 @@
                 </button>
             </div>
 
-            <!-- UI Scale Controls -->
-            <div class="pref-group">
-                <div class="pref-group-label">UI Scale</div>
-                <div class="pref-row">
-                    <button class="pref-btn" id="scaleDecBtn" title="Decrease UI scale">−</button>
-                    <button class="pref-btn pref-btn-reset" id="scaleResetBtn" title="Reset UI scale">Reset</button>
-                    <button class="pref-btn" id="scaleIncBtn" title="Increase UI scale">+</button>
-                    <span class="pref-value" id="scaleDisplay">100%</span>
-                </div>
-            </div>
-
             <!-- Font Size Controls -->
             <div class="pref-group">
                 <div class="pref-group-label">Font Size</div>
                 <div class="pref-row">
-                    <button class="pref-btn" id="fontDecBtn" title="Decrease font size">−</button>
-                    <span class="pref-value pref-value-center" id="fontDisplay">12px</span>
+                    <button class="pref-btn" id="fontDecBtn" title="Decrease font size">&minus;</button>
                     <button class="pref-btn" id="fontIncBtn" title="Increase font size">+</button>
-                    <button class="pref-btn pref-btn-reset" id="fontResetBtn" title="Reset font size">↺</button>
+                    <button class="pref-btn pref-btn-reset" id="fontResetBtn" title="Reset font size">&#8635;</button>
+                    <input class="pref-input" id="fontDisplay" type="text" inputmode="numeric"
+                        value="12" size="4" aria-label="Font size in pixels" title="Type a font size between 9 and 16">
                 </div>
             </div>
         </aside>
@@ -81,11 +71,28 @@
                 <span id="breadcrumbText">Workspace &rsaquo; </span>
             </div>
             <div id="cy"></div>
+
+            <!-- Panel toggles live in the graph panel so they stay reachable
+                 even when a side panel is collapsed. -->
+            <div class="panel-toggles">
+                <button class="panel-toggle" id="helpBtn" title="What is each panel?" aria-label="Help">?</button>
+                <button class="panel-toggle" id="toggleLeftBtn" title="Show or hide the Controls panel"
+                    aria-label="Toggle Controls panel" aria-pressed="true">&#9664;</button>
+                <button class="panel-toggle" id="toggleRightBtn" title="Show or hide the Details and AI panel"
+                    aria-label="Toggle Details panel" aria-pressed="true">&#9654;</button>
+            </div>
+
+            <!-- Horizontal grab handles for the two side panels -->
+            <div class="panel-resizer panel-resizer-left" id="leftResizer"
+                role="separator" aria-orientation="vertical" aria-label="Resize Controls panel" tabindex="0"></div>
+            <div class="panel-resizer panel-resizer-right" id="rightResizer"
+                role="separator" aria-orientation="vertical" aria-label="Resize Details panel" tabindex="0"></div>
+
             <!-- Zoom controls overlay -->
             <div class="zoom-controls">
                 <button class="zoom-btn" id="zoomInBtn"  title="Zoom in">+</button>
-                <button class="zoom-btn" id="zoomFitBtn" title="Fit graph">⊡</button>
-                <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">−</button>
+                <button class="zoom-btn" id="zoomFitBtn" title="Fit graph">&#9631;</button>
+                <button class="zoom-btn" id="zoomOutBtn" title="Zoom out">&minus;</button>
             </div>
         </main>
 
@@ -105,28 +112,87 @@
                 </div>
             </div>
 
+            <!-- Drag handle between Node Details and the AI Assistant -->
+            <div class="panel-resizer-v" id="detailsResizer"
+                role="separator" aria-orientation="horizontal" aria-label="Resize Node Details panel" tabindex="0"></div>
+
             <!-- AI Assistant -->
             <div class="panel-section panel-section-grow">
                 <div class="panel-section-header">
                     <h2 class="panel-section-title" id="agentTitle">AI Assistant</h2>
+                    <span class="agent-status-pill" id="agentStatus">Ready</span>
                 </div>
                 <div class="agent-body">
-                    <div class="agent-brand">
-                        <img src="{{iconUri}}" alt="BobGraph" class="brand-icon-lg">
-                    </div>
                     <div id="agentMessages" class="agent-messages" aria-live="polite">
-                        <div class="agent-empty">Select a node to ask the assistant about its code.</div>
+                        <div class="agent-empty">
+                            <img src="{{iconUri}}" alt="" class="agent-empty-icon">
+                            <strong>Explore your code</strong>
+                            <span>Select a node to start a conversation about its structure, behavior, or next steps.</span>
+                        </div>
+                    </div>
+                    <div class="agent-suggestions" id="agentSuggestions" aria-label="Suggested questions">
+                        <button type="button" class="agent-suggestion">Summarize this file</button>
+                        <button type="button" class="agent-suggestion">What should I know first?</button>
                     </div>
                     <form id="agentForm" class="agent-form">
-                        <textarea id="agentInput" rows="2" maxlength="4000"
-                            placeholder="Ask the assistant about the selected node..." aria-label="Ask the assistant"></textarea>
-                        <button id="agentSendBtn" class="btn btn-open-ide" type="submit" disabled>Ask</button>
+                        <div class="agent-composer">
+                            <textarea id="agentInput" rows="1" maxlength="4000"
+                                placeholder="Ask about this code..." aria-label="Ask the assistant"></textarea>
+                            <button id="agentSendBtn" class="agent-send" type="submit" disabled aria-label="Send message" title="Send message">
+                                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8 13.5 2.5 11 13l-3.2-3.6L2 8Zm5.9.7 2.1 2.4 1.6-6.5-7 3.1 3.3 1Z" fill="currentColor"/></svg>
+                            </button>
+                        </div>
+                        <span class="agent-composer-hint">Enter to send · Shift+Enter for a new line</span>
                     </form>
                 </div>
             </div>
 
         </aside>
     </div>
+
+    <!-- Help overlay: explains what each panel is for. -->
+    <div class="help-overlay" id="helpOverlay" role="dialog" aria-modal="true" aria-hidden="true"
+        aria-labelledby="helpTitle">
+        <div class="help-card">
+            <h2 id="helpTitle">BobGraph panels</h2>
+            <p>Every region of the visualizer, and what it does.</p>
+            <div class="help-grid">
+                <dl class="help-item">
+                    <dt>Controls</dt>
+                    <dd>Left panel. Refreshes the graph, exports it as JSON, and holds the Font
+                        Size preference. Drag its right edge to resize it.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>Graph</dt>
+                    <dd>Centre panel. One node per file, edges show imports. Click a node for its
+                        details, double-click to open that file's flowchart. Use the
+                        <kbd>+</kbd>/<kbd>&minus;</kbd>/<kbd>&#9631;</kbd> buttons to zoom.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>Node Details</dt>
+                    <dd>Top of the right panel. Shows the selected node's description,
+                        connections and AI-written pseudocode, plus an
+                        <strong>Open in IDE</strong> button that jumps to the source line.
+                        Drag the divider below it to resize.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>AI Assistant</dt>
+                    <dd>Bottom of the right panel. Ask questions about the selected node.
+                        Needs a language model, so it stays empty until one is available.</dd>
+                </dl>
+                <dl class="help-item">
+                    <dt>Panel toggles</dt>
+                    <dd>Top-right of the graph. <kbd>?</kbd> opens this help,
+                        <kbd>&#9664;</kbd> and <kbd>&#9654;</kbd> collapse or restore each
+                        side panel. Your layout is remembered.</dd>
+                </dl>
+            </div>
+            <div class="help-footer">
+                <button class="btn btn-secondary" id="helpCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script src="{{jsUri}}"></script>
 </body>
 </html>
