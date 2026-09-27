@@ -1,10 +1,14 @@
 {
   "name": "bobgraph",
   "displayName": "BobGraph - Workspace Visualizer",
-  "publisher": "bob-ai-team",
-  "description": "VS Code extension that parses a project's code structure with IBM Bob 2.0 and renders it as an interactive graph, with click-to-view pseudocode for faster onboarding",
+  "publisher": "Rambots",
+  "description": "VS Code extension that parses a project's code structure and renders it as an interactive graph, with click-to-view pseudocode for faster onboarding",
   "license": "MIT",
   "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dumakulem/BobGraph-The-WorkSpace-Visualizer.git"
+  },
   "categories": [
     "Visualization",
     "Other"
