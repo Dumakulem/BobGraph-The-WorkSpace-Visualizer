@@ -888,6 +888,8 @@ body, html {
     display: flex;
     align-items: center;
     gap: 5px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .pref-btn {
@@ -1062,7 +1064,10 @@ body.is-resizing-v { cursor: row-resize; }
 /* ─── Preference Inputs ───────────────────────────── */
 
 .pref-input {
+    max-width: 54px;
+    min-width: 28px;
     width: 54px;
+    flex-shrink: 1;
     text-align: right;
     background: var(--vscode-input-background, var(--bg-card, #161d2d));
     color: var(--vscode-input-foreground, var(--text-primary, #e6edf3));
