@@ -157,9 +157,64 @@ let isLoading = false;
         }
     }
 
+    // ── Text sizing ───────────────────────────────────────────────────────────
+    //
+    // The font preference is read here, before the node styles below, because the
+    // Cytoscape style sheet is built from it. Cytoscape paints to a canvas and
+    // cannot resolve a CSS custom property, so the value has to be baked into the
+    // style rules - and those rules are built at module scope.
+    const FONT_DEFAULT = 12;
+    const FONT_STEP    = 1;
+    const FONT_MIN     = 9;
+    const FONT_MAX     = 16;
+
+    const FONT_BASE    = FONT_DEFAULT;
+    const EDGE_FONT_BASE = 9;
+
+    const _savedState = window.vscode?.getState() ?? {};
+    let aiFontSize = typeof _savedState.aiFontSize === 'number' && Number.isFinite(_savedState.aiFontSize)
+        ? Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(_savedState.aiFontSize)))
+        : FONT_DEFAULT;
+
+    /**
+     * Scale one of the design's base font sizes by the current font preference.
+     *
+     *  Everything is expressed relative to the 12px design size, so the existing
+     *  visual hierarchy survives: a small node caption (10px) and a large one
+     *  (12px) both grow by the same factor instead of collapsing onto one size.
+     *  Rounded to keep the canvas labels on whole pixels; sub-pixel sizes make
+     *  Cytoscape's text measurement drift between runs.
+     */
+    function scaledFont(base) {
+        return Math.max(6, Math.round(base * aiFontSize / FONT_BASE));
+    }
+
+    /**
+     * Resolve one node type's style at the current font size.
+     *
+     *  The box grows along with the text. Without this, raising the font size
+     *  past 12px pushes labels outside their node, because the widths in
+     *  nodeStyles are fixed pixel values sized for 12px text. Growing them keeps
+     *  the flowchart layout honest too: the dagre pass spaces nodes by their real
+     *  dimensions, so larger labels get more room instead of overlapping.
+     */
+    function nodeStyleFor(type) {
+        const { 'font-base': fontBase, ...base } = nodeStyles[type];
+        const ratio = aiFontSize / FONT_BASE;
+        return {
+            ...base,
+            'font-size': scaledFont(fontBase),
+            width: Math.round(base.width * ratio),
+            height: Math.round(base.height * ratio)
+        };
+    }
+
     // Node colours come from the --accent-*-bg palette in style.css; that file is the single
     // source of truth. The hex literals here are fallbacks only — they must match what style.css
     // declares for the same variable so they agree whether CSS loaded or not.
+    //
+    // Font sizes are relative to FONT_BASE and resolved through scaledFont(), so the
+    // Font Size preference drives the graph, the flowcharts, and the AI panel together.
     const nodeStyles = {
         file: {
             'background-color': themeColor('--accent-file-bg', '#1e3a5f'),
@@ -169,7 +224,7 @@ let isLoading = false;
             width: 140,
             height: 50,
             color: '#ffffff',
-            'font-size': 12,
+            'font-base': 12,
             'font-weight': 'bold',
             'text-valign': 'center',
             'text-halign': 'center'
@@ -182,7 +237,7 @@ let isLoading = false;
             width: 130,
             height: 50,
             color: '#ffffff',
-            'font-size': 12,
+            'font-base': 12,
             'font-weight': 'bold',
             'text-valign': 'center',
             'text-halign': 'center'
@@ -195,7 +250,7 @@ let isLoading = false;
             width: 130,
             height: 50,
             color: '#ffffff',
-            'font-size': 12,
+            'font-base': 12,
             'text-valign': 'center',
             'text-halign': 'center'
         },
@@ -207,7 +262,7 @@ let isLoading = false;
             width: 130,
             height: 50,
             color: '#ffffff',
-            'font-size': 12,
+            'font-base': 12,
             'text-valign': 'center',
             'text-halign': 'center'
         },
@@ -219,7 +274,7 @@ let isLoading = false;
             width: 110,
             height: 44,
             color: '#00d4ff',
-            'font-size': 12,
+            'font-base': 12,
             'font-weight': 'bold',
             'text-valign': 'center',
             'text-halign': 'center'
@@ -232,8 +287,8 @@ let isLoading = false;
             width: 180,
             height: 150,
             color: '#ffffff',
-            'font-size': 11,
-            'text-wrap': 'wrap',
+            'font-base': 11,
+            'text-wrap': 'ellipsis',
             'text-max-width': 120,
             'text-valign': 'center',
             'text-halign': 'center'
@@ -246,7 +301,7 @@ let isLoading = false;
             width: 140,
             height: 36,
             color: '#4ade80',
-            'font-size': 10,
+            'font-base': 10,
             'text-valign': 'center',
             'text-halign': 'center'
         }
@@ -381,17 +436,17 @@ let isLoading = false;
                         'font-family': 'Segoe UI, system-ui, sans-serif',
                         'text-outline-width': 0,
                         'text-outline-color': 'transparent',
-                        // Keep labels readable without clipping semantic names. Individual
-                        // node styles can override the wrapping width for their shape.
-                        'text-wrap': 'wrap',
+                        // Cytoscape's text-wrap accepts only none/ellipsis/whitespace.
+                        // "wrap" is silently ignored, so labels would not wrap at all.
+                        'text-wrap': 'ellipsis',
                         'text-max-width': 100,
                         'transition-property': 'border-width, border-color, opacity, background-color',
                         'transition-duration': '150ms'
                     }
                 },
-                ...Object.entries(nodeStyles).map(([type, style]) => ({
+                ...Object.keys(nodeStyles).map((type) => ({
                     selector: `node[type="${type}"]`,
-                    style: style
+                    style: nodeStyleFor(type)
                 })),
                 {
                     selector: 'edge',
@@ -403,7 +458,7 @@ let isLoading = false;
                         'target-arrow-shape': 'triangle',
                         'line-color': borderColor,
                         'target-arrow-color': borderColor,
-                        'font-size': '9px',
+                        'font-size': scaledFont(EDGE_FONT_BASE) + 'px',
                         'label': 'data(relation)',
                         'color': themeColor('--vscode-editor-foreground', '#e6edf3'),
                         'text-outline-width': 2,
@@ -875,8 +930,10 @@ let isLoading = false;
     function updateAgentContext(data) {
         const input = document.getElementById('agentInput');
         const send = document.getElementById('agentSendBtn');
-        if (input) input.placeholder = `Ask the assistant about ${data.label ?? 'this node'}...`;
+        const label = data.label ?? 'this node';
+        if (input) input.placeholder = `Ask about ${label}...`;
         if (send) send.disabled = false;
+        document.getElementById('agentStatus')?.replaceChildren(document.createTextNode('Ready'));
     }
 
     function setAgentName(modelName) {
@@ -905,8 +962,9 @@ let isLoading = false;
         if (input) input.disabled = busy;
         if (send) {
             send.disabled = busy || !selectedNodeData;
-            send.textContent = busy ? `${activeModelName} is thinking...` : 'Ask';
         }
+        const status = document.getElementById('agentStatus');
+        if (status) status.textContent = busy ? 'Thinking' : 'Ready';
     }
 
     document.getElementById('agentForm')?.addEventListener('submit', event => {
@@ -921,6 +979,30 @@ let isLoading = false;
             nodeId: selectedNodeId,
             filePath: selectedNodeData.filePath,
             question
+        });
+    });
+
+    document.getElementById('agentInput')?.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            document.getElementById('agentForm')?.requestSubmit();
+        }
+    });
+
+    document.getElementById('agentInput')?.addEventListener('input', event => {
+        const input = event.currentTarget;
+        if (!(input instanceof HTMLTextAreaElement)) return;
+        input.style.height = 'auto';
+        input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
+    });
+
+    document.querySelectorAll('.agent-suggestion').forEach(button => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById('agentInput');
+            if (!(input instanceof HTMLTextAreaElement) || !selectedNodeData) return;
+            input.value = button.textContent?.trim() ?? '';
+            input.focus();
+            document.getElementById('agentForm')?.requestSubmit();
         });
     });
 
@@ -983,97 +1065,247 @@ let isLoading = false;
         }
     });
 
-    // ── UI Scale & Font Size preferences ─────────────────────────────────────
+    // ── Font Size & panel preferences ─────────────────────────────────────────
     //
     // Preferences are stored via vscode.setState / vscode.getState which the
     // VS Code webview API persists across panel close/reopen within a session,
     // and also serialises to globalState so values survive extension restarts.
     //
-    // UI Scale: scales .sidebar-left and .sidebar-right using CSS zoom.
-    //   Range: 60 % – 160 %, step 10 %.  Default: 100 %.
-    //
-    // Font Size: controls the font-size of AI-generated text in the right panel
-    //   (node explanation + agent messages).  Range: 9 px – 20 px, step 1 px.
-    //   Default: 12 px.
+    // Font Size: one text size for the whole view - AI-generated text in the right
+    //   panel, plus the graph node labels, edge labels, and flowchart labels, which
+    //   all scale by the same ratio off their design sizes. Range: 9 px - 20 px,
+    //   step 1 px. Default: 12 px.
 
-    const SCALE_DEFAULT = 100;
-    const SCALE_STEP    = 10;
-    const SCALE_MIN     = 60;
-    const SCALE_MAX     = 160;
+    // FONT_* and the saved-state read live near the top of this IIFE, because the
+    // Cytoscape node styles below are built from the font size.
 
-    const FONT_DEFAULT  = 12;
-    const FONT_STEP     = 1;
-    const FONT_MIN      = 9;
-    const FONT_MAX      = 20;
+    const PANEL_MIN     = 180;
+    const PANEL_MAX     = 560;
+    const DETAILS_MIN   = 15;
+    const DETAILS_MAX   = 85;
 
-    // Load persisted state (falls back to defaults on first run).
-    const _savedState  = window.vscode?.getState() ?? {};
-    let uiScale   = typeof _savedState.uiScale   === 'number' ? _savedState.uiScale   : SCALE_DEFAULT;
-    let aiFontSize = typeof _savedState.aiFontSize === 'number' ? _savedState.aiFontSize : FONT_DEFAULT;
+    const num = (value, min, max, fallback) =>
+        typeof value === 'number' && Number.isFinite(value)
+            ? Math.min(max, Math.max(min, value))
+            : fallback;
 
-    /** Persist the current preference values via the VS Code webview state API. */
+    let leftWidth  = num(_savedState.leftWidth,  PANEL_MIN, PANEL_MAX, 240);
+    let rightWidth = num(_savedState.rightWidth, PANEL_MIN, PANEL_MAX, 300);
+    let detailsPct = num(_savedState.detailsPct, DETAILS_MIN, DETAILS_MAX, 55);
+    let leftHidden  = _savedState.leftHidden  === true;
+    let rightHidden = _savedState.rightHidden === true;
+
+    /** Persist the current preference and layout values via the webview state API. */
     function savePrefs() {
-        window.vscode?.setState({ ...(window.vscode?.getState() ?? {}), uiScale, aiFontSize });
+        window.vscode?.setState({
+            ...(window.vscode?.getState() ?? {}),
+            aiFontSize,
+            leftWidth, rightWidth, detailsPct,
+            leftHidden, rightHidden
+        });
+    }
+    function applyGraphFontSize() {
+        if (typeof cy?.style !== 'function') { return; }
+        try {
+            for (const type of Object.keys(nodeStyles)) {
+                const style = nodeStyleFor(type);
+                cy.style()
+                    .selector(`node[type="${type}"]`)
+                    .style({
+                        'font-size': style['font-size'],
+                        width: style.width,
+                        height: style.height
+                    });
+            }
+            cy.style().selector('edge').style({ 'font-size': scaledFont(EDGE_FONT_BASE) + 'px' });
+            // Mutating a style rule does not redraw on its own.
+            cy.style().update();
+        } catch (e) {
+            // A rule that cannot be rewritten keeps the size it was built with;
+            // the next initGraph picks up the current value anyway.
+        }
     }
 
-    /** Apply uiScale to the sidebar panels only.
-     *
-     *  IMPORTANT: zoom must NEVER be applied to <body> or .app-container.
-     *  Doing so causes three regressions:
-     *    1. The grid layout (100vw × 100vh) no longer fills the viewport, cutting
-     *       off the right sidebar.
-     *    2. The zoom-control overlay is displaced.
-     *    3. Cytoscape's mouse-hit detection uses getBoundingClientRect(); a body
-     *       zoom shifts the reported rect away from the actual pointer position,
-     *       making hover/click land on the wrong node.
-     *  Scoping zoom to .sidebar-left and .sidebar-right avoids all three issues
-     *  because the sidebars are independent flex columns — their zoom does not
-     *  affect the grid track sizes or the canvas coordinate space.
-     */
-    function applyScale(scale) {
-        const ratio = (scale / 100).toString();
-        const left  = document.querySelector('.sidebar-left');
-        const right = document.querySelector('.sidebar-right');
-        if (left)  left.style.zoom  = ratio;
-        if (right) right.style.zoom = ratio;
-        const display = document.getElementById('scaleDisplay');
-        if (display) display.textContent = scale + '%';
-    }
-
-    /** Apply aiFontSize to AI-generated text in the right panel.
-     *
-     *  Setting fontSize directly on #nodeInfo would be wiped every time
-     *  showNodeDetails() rebuilds its innerHTML. Instead we set a CSS custom
-     *  property on the stable .sidebar-right ancestor; the relevant CSS rules
-     *  read var(--ai-font-size) so the value survives any DOM reconstruction.
-     */
     function applyFontSize(size) {
-        const sidebarRight = document.querySelector('.sidebar-right');
-        if (sidebarRight) sidebarRight.style.setProperty('--ai-font-size', size + 'px');
+        aiFontSize = size;
+
+        const container = document.querySelector('.app-container');
+        if (container) container.style.setProperty('--ai-font-size', size + 'px');
         const display = document.getElementById('fontDisplay');
-        if (display) display.textContent = size + 'px';
+        if (display) display.value = String(size);
+        applyGraphFontSize();
     }
 
-    // Apply persisted preferences immediately on load.
-    applyScale(uiScale);
-    applyFontSize(aiFontSize);
+    // ── Panel layout ──────────────────────────────────────────────────────────
+    //
+    // The three geometry values are written as custom properties on
+    // .app-container; style.css owns the grid template and the Node Details
+    // flex-basis, so a drag frame only touches one property per axis.
 
-    // ── Wire up UI Scale buttons ──────────────────────────────────────────────
-    document.getElementById('scaleDecBtn')?.addEventListener('click', () => {
-        uiScale = Math.max(SCALE_MIN, uiScale - SCALE_STEP);
-        applyScale(uiScale);
+    const appContainer = document.querySelector('.app-container');
+
+    function applyPanelLayout() {
+        if (!appContainer) return;
+        appContainer.style.setProperty('--w-left', (leftHidden ? 0 : leftWidth) + 'px');
+        appContainer.style.setProperty('--w-right', (rightHidden ? 0 : rightWidth) + 'px');
+        appContainer.style.setProperty('--details-h', detailsPct + '%');
+        appContainer.classList.toggle('is-collapsed-left', leftHidden);
+        appContainer.classList.toggle('is-collapsed-right', rightHidden);
+        document.getElementById('toggleLeftBtn')?.setAttribute('aria-pressed', String(!leftHidden));
+        document.getElementById('toggleRightBtn')?.setAttribute('aria-pressed', String(!rightHidden));
+        // The graph canvas must be told its box changed, or Cytoscape keeps the
+        // old size and the graph sits off-centre until the next zoom.
+        cy?.resize();
+    }
+
+    // ── Drag-to-resize ────────────────────────────────────────────────────────
+    //
+    // Pointer Events are used rather than mouse events so a trackpad swipe and
+    // a mouse drag follow the same path. Listeners go on window so the drag
+    // survives the pointer leaving the 7px handle.
+
+    function beginDrag(handle, onMove, cursorClass) {
+        if (!handle) return;
+        handle.addEventListener('pointerdown', event => {
+            if (event.button !== 0) return;
+            event.preventDefault();
+            handle.classList.add('is-dragging');
+            document.body?.classList.add(cursorClass);
+
+            const onPointerMove = e => onMove(e);
+            const onPointerUp = () => {
+                handle.classList.remove('is-dragging');
+                document.body?.classList.remove(cursorClass);
+                window.removeEventListener('pointermove', onPointerMove);
+                window.removeEventListener('pointerup', onPointerUp);
+                savePrefs();
+            };
+            window.addEventListener('pointermove', onPointerMove);
+            window.addEventListener('pointerup', onPointerUp);
+        });
+    }
+
+    beginDrag(document.getElementById('leftResizer'), e => {
+        leftWidth = Math.round(num(e.clientX, PANEL_MIN, PANEL_MAX, leftWidth));
+        applyPanelLayout();
+    }, 'is-resizing');
+
+    beginDrag(document.getElementById('rightResizer'), e => {
+        // Dragging the right panel's left edge leftwards makes it wider.
+        const viewport = document.documentElement?.clientWidth ?? 0;
+        const fromRight = viewport > 0 ? viewport - e.clientX : rightWidth;
+        rightWidth = Math.round(num(fromRight, PANEL_MIN, PANEL_MAX, rightWidth));
+        applyPanelLayout();
+    }, 'is-resizing');
+
+    beginDrag(document.getElementById('detailsResizer'), e => {
+        const sidebar = document.querySelector('.sidebar-right');
+        const height = sidebar?.getBoundingClientRect?.().height ?? 0;
+        if (!height) return;
+        const offset = e.clientY - sidebar.getBoundingClientRect().top;
+        detailsPct = Math.round(num((offset / height) * 100, DETAILS_MIN, DETAILS_MAX, detailsPct));
+        applyPanelLayout();
+    }, 'is-resizing-v');
+
+    // Keyboard nudging, so the separators are reachable without a mouse.
+    function nudgeSeparator(id, apply) {
+        const el = document.getElementById(id);
+        el?.addEventListener('keydown', e => {
+            if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+            e.preventDefault();
+            apply(e.key === 'ArrowRight' ? 1 : -1);
+            applyPanelLayout();
+            savePrefs();
+        });
+    }
+    nudgeSeparator('leftResizer', dir => { leftWidth = num(leftWidth + dir * 16, PANEL_MIN, PANEL_MAX, leftWidth); });
+    nudgeSeparator('rightResizer', dir => { rightWidth = num(rightWidth + dir * 16, PANEL_MIN, PANEL_MAX, rightWidth); });
+    nudgeSeparator('detailsResizer', dir => { detailsPct = num(detailsPct + dir * 2, DETAILS_MIN, DETAILS_MAX, detailsPct); });
+
+    // ── Panel show / hide ─────────────────────────────────────────────────────
+
+    document.getElementById('toggleLeftBtn')?.addEventListener('click', () => {
+        leftHidden = !leftHidden;
+        if (!leftHidden && leftWidth < PANEL_MIN) leftWidth = 240;
+        applyPanelLayout();
         savePrefs();
     });
-    document.getElementById('scaleIncBtn')?.addEventListener('click', () => {
-        uiScale = Math.min(SCALE_MAX, uiScale + SCALE_STEP);
-        applyScale(uiScale);
+    document.getElementById('toggleRightBtn')?.addEventListener('click', () => {
+        rightHidden = !rightHidden;
+        if (!rightHidden && rightWidth < PANEL_MIN) rightWidth = 300;
+        applyPanelLayout();
         savePrefs();
     });
-    document.getElementById('scaleResetBtn')?.addEventListener('click', () => {
-        uiScale = SCALE_DEFAULT;
-        applyScale(uiScale);
+
+    // ── Help overlay ──────────────────────────────────────────────────────────
+
+    const helpOverlay = document.getElementById('helpOverlay');
+    function setHelpOpen(open) {
+        helpOverlay?.classList.toggle('is-open', open);
+        // Keep the dialog out of the tab order while it is hidden, and move focus
+        // into it on open so the next Tab reaches Close instead of the graph.
+        helpOverlay?.setAttribute('aria-hidden', String(!open));
+        if (open) {
+            document.getElementById('helpCloseBtn')?.focus?.();
+        } else {
+            // Returning focus to the trigger is what keeps keyboard users from
+            // being dumped back at the top of the document on close.
+            document.getElementById('helpBtn')?.focus?.();
+        }
+    }
+    document.getElementById('helpBtn')?.addEventListener('click', () => setHelpOpen(true));
+    document.getElementById('helpCloseBtn')?.addEventListener('click', () => setHelpOpen(false));
+    helpOverlay?.addEventListener('click', e => {
+        // Clicking the backdrop closes; clicking the card must not.
+        if (e.target === helpOverlay) setHelpOpen(false);
+    });
+    // Escape is the expected way out of a dialog.
+    helpOverlay?.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            setHelpOpen(false);
+        }
+    });
+
+    // ── Typed preference inputs ───────────────────────────────────────────────
+    //
+    // Both displays became text inputs so a value can be typed directly. Bad
+    // input is refused rather than clamped silently: the field is flagged and
+    // the last good value is restored on blur.
+
+    function wireNumericInput(id, min, max, current, commit) {
+        const input = document.getElementById(id);
+        if (!input) return;
+        const revert = () => {
+            input.classList.remove('is-invalid');
+            input.value = String(current());
+        };
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur?.(); }
+        });
+        input.addEventListener('input', () => {
+            const raw = String(input.value).trim();
+            if (raw === '') return;   // mid-edit, wait for blur
+            const parsed = Number(raw);
+            if (!Number.isFinite(parsed) || parsed < min || parsed > max) {
+                input.classList.add('is-invalid');
+                return;
+            }
+            input.classList.remove('is-invalid');
+            commit(parsed);
+        });
+        input.addEventListener('blur', revert);
+    }
+
+    wireNumericInput('fontDisplay', FONT_MIN, FONT_MAX, () => aiFontSize, value => {
+        aiFontSize = Math.round(value);
+        applyFontSize(aiFontSize);
         savePrefs();
     });
+
+    // Apply persisted preferences and layout immediately on load.
+    applyFontSize(aiFontSize);
+    applyPanelLayout();
 
     // ── Wire up Font Size buttons ─────────────────────────────────────────────
     document.getElementById('fontDecBtn')?.addEventListener('click', () => {
