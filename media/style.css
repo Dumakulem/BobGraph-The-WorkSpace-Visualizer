@@ -370,6 +370,17 @@ body, html {
     background: rgba(255,255,255,0.015);
 }
 
+.agent-status-pill {
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-size: 10px;
+    line-height: 1;
+    padding: 5px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+}
+
 .panel-section h2,
 .panel-section-title {
     font-size: 10px;
@@ -544,12 +555,12 @@ body, html {
     flex-grow: 1;
     min-height: 0;
     overflow: hidden;
-    padding: 24px 16px;
+    padding: 14px 14px 12px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    align-items: center;
-    justify-content: center;
+    align-items: stretch;
+    justify-content: flex-start;
     color: var(--vscode-descriptionForeground, var(--text-muted));
     font-size: 12px;
     text-align: center;
@@ -562,15 +573,56 @@ body, html {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     text-align: left;
 }
 
 .agent-empty {
     color: var(--vscode-descriptionForeground, var(--text-muted));
     font-size: var(--ai-font-size, 12px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
     text-align: center;
-    padding: 16px 8px;
+    padding: 26px 12px;
+    line-height: 1.5;
+}
+
+.agent-empty strong {
+    color: var(--vscode-editor-foreground, var(--text-primary));
+    font-size: 13px;
+}
+
+.agent-empty-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    opacity: 0.85;
+}
+
+.agent-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.agent-suggestion {
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--vscode-descriptionForeground, var(--text-secondary));
+    cursor: pointer;
+    font: inherit;
+    font-size: 11px;
+    padding: 6px 9px;
+    transition: background var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.agent-suggestion:hover {
+    background: rgba(0, 212, 255, 0.08);
+    border-color: var(--cyan-dim);
+    color: var(--text-primary);
 }
 
 /* Shared bubble geometry. max-width keeps a long answer from spanning the full
@@ -630,34 +682,74 @@ body, html {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 5px;
     text-align: left;
 }
 
-/* Pill-shaped composer. Themed border/foreground are kept so the field still
-   follows the active colour theme, but the background is ours so the pill can
-   stay translucent. */
-#agentInput {
-    width: 100%;
-    resize: vertical;
-    min-height: 52px;
-    max-height: 140px;
-    padding: 14px 18px;
+.agent-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 7px 7px 7px 14px;
     border: 1px solid var(--vscode-input-border, var(--glass-border));
-    border-radius: 24px;
+    border-radius: 16px;
     background: var(--glass-bg);
-    color: var(--vscode-input-foreground, var(--text-primary));
-    font: inherit;
     box-shadow: var(--glass-inset);
-    transition: border-color var(--transition), box-shadow var(--transition),
-                background var(--transition);
+    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
 
-#agentInput:focus {
-    outline: 1px solid var(--vscode-focusBorder, var(--cyan));
+#agentInput {
+    width: 100%;
+    resize: none;
+    min-height: 28px;
+    max-height: 140px;
+    padding: 5px 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--vscode-input-foreground, var(--text-primary));
+    font: inherit;
+}
+
+.agent-composer:focus-within {
     border-color: var(--cyan);
-    background: var(--glass-bg-strong);
     box-shadow: var(--glass-inset), 0 0 0 3px var(--cyan-glow);
+}
+
+.agent-send {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--cyan);
+    color: #06121a;
+    cursor: pointer;
+    transition: transform var(--transition), opacity var(--transition), background var(--transition);
+}
+
+.agent-send svg {
+    width: 16px;
+    height: 16px;
+}
+
+.agent-send:hover:not(:disabled) {
+    background: #33deff;
+    transform: translateY(-1px);
+}
+
+.agent-send:disabled {
+    cursor: not-allowed;
+    opacity: 0.35;
+}
+
+.agent-composer-hint {
+    color: var(--vscode-descriptionForeground, var(--text-muted));
+    font-size: 10px;
+    padding-left: 4px;
 }
 
 .agent-icon {
@@ -772,7 +864,7 @@ body, html {
     flex-shrink: 0;
 }
 
-/* ─── Preference Controls (UI Scale / Font Size) ─── */
+/* ─── Preference Controls (Font Size) ─── */
 
 .pref-group {
     display: flex;
@@ -1155,6 +1247,17 @@ body.is-resizing-v { cursor: row-resize; }
 
 .help-overlay.is-open .help-card {
     animation: card-in 170ms var(--ease-spring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 @keyframes overlay-fade {

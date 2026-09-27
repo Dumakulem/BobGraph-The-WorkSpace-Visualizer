@@ -901,8 +901,10 @@ let isLoading = false;
     function updateAgentContext(data) {
         const input = document.getElementById('agentInput');
         const send = document.getElementById('agentSendBtn');
-        if (input) input.placeholder = `Ask the assistant about ${data.label ?? 'this node'}...`;
+        const label = data.label ?? 'this node';
+        if (input) input.placeholder = `Ask about ${label}...`;
         if (send) send.disabled = false;
+        document.getElementById('agentStatus')?.replaceChildren(document.createTextNode('Ready'));
     }
 
     function setAgentName(modelName) {
@@ -931,8 +933,9 @@ let isLoading = false;
         if (input) input.disabled = busy;
         if (send) {
             send.disabled = busy || !selectedNodeData;
-            send.textContent = busy ? `${activeModelName} is thinking...` : 'Ask';
         }
+        const status = document.getElementById('agentStatus');
+        if (status) status.textContent = busy ? 'Thinking' : 'Ready';
     }
 
     document.getElementById('agentForm')?.addEventListener('submit', event => {
@@ -947,6 +950,30 @@ let isLoading = false;
             nodeId: selectedNodeId,
             filePath: selectedNodeData.filePath,
             question
+        });
+    });
+
+    document.getElementById('agentInput')?.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            document.getElementById('agentForm')?.requestSubmit();
+        }
+    });
+
+    document.getElementById('agentInput')?.addEventListener('input', event => {
+        const input = event.currentTarget;
+        if (!(input instanceof HTMLTextAreaElement)) return;
+        input.style.height = 'auto';
+        input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
+    });
+
+    document.querySelectorAll('.agent-suggestion').forEach(button => {
+        button.addEventListener('click', () => {
+            const input = document.getElementById('agentInput');
+            if (!(input instanceof HTMLTextAreaElement) || !selectedNodeData) return;
+            input.value = button.textContent?.trim() ?? '';
+            input.focus();
+            document.getElementById('agentForm')?.requestSubmit();
         });
     });
 
@@ -1009,14 +1036,11 @@ let isLoading = false;
         }
     });
 
-    // ── UI Scale & Font Size preferences ─────────────────────────────────────
+    // ── Font Size & panel preferences ─────────────────────────────────────────
     //
     // Preferences are stored via vscode.setState / vscode.getState which the
     // VS Code webview API persists across panel close/reopen within a session,
     // and also serialises to globalState so values survive extension restarts.
-    //
-    // UI Scale: scales .sidebar-left and .sidebar-right using CSS zoom.
-    //   Range: 60 % – 160 %, step 10 %.  Default: 100 %.
     //
     // Font Size: one text size for the whole view - AI-generated text in the right
     //   panel, plus the graph node labels, edge labels, and flowchart labels, which
@@ -1026,17 +1050,10 @@ let isLoading = false;
     // FONT_* and the saved-state read live near the top of this IIFE, because the
     // Cytoscape node styles below are built from the font size.
 
-    const SCALE_DEFAULT = 100;
-    const SCALE_STEP    = 10;
-    const SCALE_MIN     = 60;
-    const SCALE_MAX     = 160;
-
     const PANEL_MIN     = 180;
     const PANEL_MAX     = 560;
     const DETAILS_MIN   = 15;
     const DETAILS_MAX   = 85;
-
-    let uiScale = typeof _savedState.uiScale === 'number' ? _savedState.uiScale : SCALE_DEFAULT;
 
     const num = (value, min, max, fallback) =>
         typeof value === 'number' && Number.isFinite(value)
@@ -1053,25 +1070,11 @@ let isLoading = false;
     function savePrefs() {
         window.vscode?.setState({
             ...(window.vscode?.getState() ?? {}),
-            uiScale, aiFontSize,
+            aiFontSize,
             leftWidth, rightWidth, detailsPct,
             leftHidden, rightHidden
         });
     }
-    function applyScale(scale) {
-        uiScale = scale;
-        const ratio = (scale / 100).toString();
-        const container = document.querySelector('.app-container');
-        if (container) container.style.setProperty('--ui-scale', ratio);
-        // The tracks are derived from the saved pixel widths, so they have to be
-        // re-emitted at the new ratio or the panels would keep their old width.
-        applyPanelLayout();
-        const display = document.getElementById('scaleDisplay');
-        if (display) display.value = String(scale);
-    }
-
-
-
     function applyGraphFontSize() {
         if (typeof cy?.style !== 'function') { return; }
         try {
@@ -1114,13 +1117,8 @@ let isLoading = false;
 
     function applyPanelLayout() {
         if (!appContainer) return;
-        // The left panel is fixed-size by design, so its track is the stored
-        // width in plain pixels. Only the right panel is still scaled, and there
-        // the UI Scale ratio is applied on the way out from the saved design
-        // width, which keeps a drag and a scale change from fighting over it.
-        const ratio = uiScale / 100;
         appContainer.style.setProperty('--w-left', (leftHidden ? 0 : leftWidth) + 'px');
-        appContainer.style.setProperty('--w-right', (rightHidden ? 0 : rightWidth * ratio) + 'px');
+        appContainer.style.setProperty('--w-right', (rightHidden ? 0 : rightWidth) + 'px');
         appContainer.style.setProperty('--details-h', detailsPct + '%');
         appContainer.classList.toggle('is-collapsed-left', leftHidden);
         appContainer.classList.toggle('is-collapsed-right', rightHidden);
@@ -1158,13 +1156,6 @@ let isLoading = false;
         });
     }
 
-    // The right panel's pointer coordinates are in CSS pixels, i.e. already
-    // scaled by --ui-scale, so the ratio is divided out before clamping: without
-    // this, dragging at 160% would make every frame 1.6x too large and the panel
-    // would shoot past PANEL_MAX. The left panel is unscaled, so its drag needs
-    // no correction.
-    const unscaled = px => px / (uiScale / 100);
-
     beginDrag(document.getElementById('leftResizer'), e => {
         leftWidth = Math.round(num(e.clientX, PANEL_MIN, PANEL_MAX, leftWidth));
         applyPanelLayout();
@@ -1174,7 +1165,7 @@ let isLoading = false;
         // Dragging the right panel's left edge leftwards makes it wider.
         const viewport = document.documentElement?.clientWidth ?? 0;
         const fromRight = viewport > 0 ? viewport - e.clientX : rightWidth;
-        rightWidth = Math.round(num(unscaled(fromRight), PANEL_MIN, PANEL_MAX, rightWidth));
+        rightWidth = Math.round(num(fromRight, PANEL_MIN, PANEL_MAX, rightWidth));
         applyPanelLayout();
     }, 'is-resizing');
 
@@ -1277,11 +1268,6 @@ let isLoading = false;
         input.addEventListener('blur', revert);
     }
 
-    wireNumericInput('scaleDisplay', SCALE_MIN, SCALE_MAX, () => uiScale, value => {
-        uiScale = Math.round(value);
-        applyScale(uiScale);
-        savePrefs();
-    });
     wireNumericInput('fontDisplay', FONT_MIN, FONT_MAX, () => aiFontSize, value => {
         aiFontSize = Math.round(value);
         applyFontSize(aiFontSize);
@@ -1289,26 +1275,8 @@ let isLoading = false;
     });
 
     // Apply persisted preferences and layout immediately on load.
-    applyScale(uiScale);
     applyFontSize(aiFontSize);
     applyPanelLayout();
-
-    // ── Wire up UI Scale buttons ──────────────────────────────────────────────
-    document.getElementById('scaleDecBtn')?.addEventListener('click', () => {
-        uiScale = Math.max(SCALE_MIN, uiScale - SCALE_STEP);
-        applyScale(uiScale);
-        savePrefs();
-    });
-    document.getElementById('scaleIncBtn')?.addEventListener('click', () => {
-        uiScale = Math.min(SCALE_MAX, uiScale + SCALE_STEP);
-        applyScale(uiScale);
-        savePrefs();
-    });
-    document.getElementById('scaleResetBtn')?.addEventListener('click', () => {
-        uiScale = SCALE_DEFAULT;
-        applyScale(uiScale);
-        savePrefs();
-    });
 
     // ── Wire up Font Size buttons ─────────────────────────────────────────────
     document.getElementById('fontDecBtn')?.addEventListener('click', () => {

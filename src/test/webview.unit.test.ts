@@ -233,10 +233,8 @@ function run(options: Options = {}): Harness {
         // and the help overlay with its close button.
         'toggleLeftBtn', 'toggleRightBtn', 'leftResizer', 'rightResizer', 'detailsResizer',
         'helpBtn', 'helpOverlay', 'helpCloseBtn',
-        // Preference displays are <input> elements now, each with its own
-        // -/+/reset buttons, so the whole control is stubbed.
-        'scaleDisplay', 'fontDisplay',
-        'scaleDecBtn', 'scaleIncBtn', 'scaleResetBtn',
+        // Font-size controls are editable inputs with increment/reset buttons.
+        'fontDisplay',
         'fontDecBtn', 'fontIncBtn', 'fontResetBtn'
     ]) {
         els[id] = makeEl(id);
@@ -369,6 +367,7 @@ function run(options: Options = {}): Harness {
             documentElement: documentElementEl,
             getElementById: (id: string) => els[id] ?? null,
             querySelector: (selector: string) => classEls[selector.replace(/^\./, '')] ?? null,
+            querySelectorAll: () => [],
             createElement: () => {
                 const el = makeEl('new');
                 Object.setPrototypeOf(el, SandboxHTMLElement.prototype);
@@ -1403,32 +1402,15 @@ describe('interaction affordances', () => {
         assert.strictEqual(widths.length, 1, `found ${widths.length} .panel-resizer width declarations; they should be consolidated into one rule`);
     });
 
-    it('keeps the left panel free of both preferences so text cannot outgrow its box', () => {
-        // The value box used to take its text from the Font Size preference and
-        // its box from UI Scale, so at Font Size 20 with UI Scale 60% the row was
-        // too narrow, the shrinkable box absorbed the deficit and "160" was drawn
-        // outside its border while "20" still fit. The whole left panel is now
-        // fixed pixels, which removes the second unit family from the problem.
-        const css = readMedia('style.css');
-        const rule = css.match(/\.pref-input\s*\{([^}]*)\}/);
-        assert.ok(rule, '.pref-input must exist');
-        const body = rule![1];
-        assert.doesNotMatch(body, /var\(--ui-scale\)/, 'the left panel must not scale with UI Scale');
-        assert.doesNotMatch(body, /var\(--ai-font-size\)|--fs-/, 'the left panel must not scale with Font Size');
-        assert.match(body, /font-size:\s*\d+px/, 'the value text is a fixed size');
-        assert.match(body, /flex:\s*0 0 auto/, 'the row must not be able to squeeze the box');
-        assert.match(body, /min-width:[^;]*em/, 'an em min-width is the floor for three digits');
-        assert.match(body, /width:\s*auto/, 'the box tracks its longest value instead of a fixed guess');
-        // No clipping: if the box is sized correctly the value never needs to be
-        // truncated, so any of these would be hiding a layout fault, not fixing one.
-        assert.doesNotMatch(body, /overflow\s*:/, 'overflow would clip the value');
-        assert.doesNotMatch(body, /text-overflow\s*:/, 'no ellipsis on a numeric value');
+    it('does not ship a UI scale control or scaling state', () => {
+        const html = readMedia('webview.html');
+        const script = readMedia('webview.js');
+        assert.doesNotMatch(html, /UI Scale|scaleDisplay|scaleDecBtn|scaleIncBtn|scaleResetBtn/);
+        assert.doesNotMatch(script, /uiScale|SCALE_|scaleDisplay|--ui-scale/);
     });
 
     it('pins every left-panel rule to fixed pixels', () => {
-        // Nothing inside .sidebar-left, or the preference controls that live in
-        // it, may read --ui-scale or --ai-font-size again. Collapse still works:
-        // that is driven by .app-container.is-collapsed-left, not by scaling.
+        // Panel geometry is controlled by the drag-resize custom properties.
         const css = readMedia('style.css');
         // `[^}]*` already spans newlines, so no dotAll flag is needed here.
         const sections = [
@@ -1444,22 +1426,18 @@ describe('interaction affordances', () => {
             /\.pref-row\s*\{([^}]*)\}/,
             /\.pref-btn\s*\{([^}]*)\}/,
             /\.pref-btn-reset\s*\{([^}]*)\}/,
-            /\.pref-value\s*\{([^}]*)\}/,
         ];
         for (const re of sections) {
             const m = css.match(re);
             assert.ok(m, `${re.source} must match a rule`);
             assert.doesNotMatch(
                 m![1],
-                /var\(--ui-scale\)|--fs-|var\(--ai-font-size\)/,
-                `${re.source} reintroduced a scaling variable into the fixed left panel`
+                /var\(--ui-scale\)|--fs-/,
+                `${re.source} reintroduced a retired scaling variable`
             );
         }
         // The collapse path must survive the panel being pinned.
         assert.match(css, /\.app-container\.is-collapsed-left \.sidebar-left/);
-        // A short label still has to be allowed to grow rather than be clipped.
-        assert.doesNotMatch(css, /\.pref-btn\s*\{[^}]*?(?<![-\w])height:/s, 'a fixed height clips a long reset label');
-        assert.match(css, /\.pref-btn\s*\{[^}]*min-height:/s);
     });
 
     it('never forwards an internal style key to Cytoscape', async () => {
@@ -1512,35 +1490,16 @@ describe('interaction affordances', () => {
 });
 
 describe('preference inputs', () => {
-    it('shows the default scale and font size in the editable fields', async () => {
+    it('shows the default font size in the editable field', async () => {
         const h = run();
         await settle();
-        assert.strictEqual(h.els.scaleDisplay.value, '100');
         assert.strictEqual(h.els.fontDisplay.value, '12');
     });
 
-    it('applies a scale typed into the field', async () => {
+    it('keeps both panel tracks in CSS pixels', async () => {
         const h = run();
         await settle();
-        h.els.scaleDisplay.value = '150';
-        h.els.scaleDisplay.dispatch('input');
-
-        // Scaling is one custom property, not a `zoom` on the sidebars: zoom made
-        // the panels reflow at 1/ratio and spill their contents over the graph.
-        assert.strictEqual(appVars(h)['--ui-scale'], '1.5');
-        assert.strictEqual(h.savedState().uiScale, 150);
-    });
-
-    it('scales the right grid track but leaves the fixed left track alone', async () => {
-        const h = run();
-        await settle();
-        h.els.scaleDisplay.value = '150';
-        h.els.scaleDisplay.dispatch('input');
-
-        // The right panel is still scaled: a 300px design track at 1.5 is 450px.
-        assert.strictEqual(appVars(h)['--w-right'], '450px');
-        // The left panel is pinned to fixed pixels by design, so its track must
-        // not move - that is what stops its text drifting away from its box.
+        assert.strictEqual(appVars(h)['--w-right'], '300px');
         assert.strictEqual(appVars(h)['--w-left'], '240px');
     });
 
@@ -1567,16 +1526,6 @@ describe('preference inputs', () => {
         assert.strictEqual(appVars(h)['--ai-font-size'], '12px', 'the last good value must stay in effect');
     });
 
-    it('flags an out-of-range value and leaves the applied setting alone', async () => {
-        const h = run();
-        await settle();
-        h.els.scaleDisplay.value = '500';
-        h.els.scaleDisplay.dispatch('input');
-
-        assert.ok(h.els.scaleDisplay.classList.contains('is-invalid'), 'an impossible value should be visibly rejected');
-        assert.strictEqual(appVars(h)['--ui-scale'], '1', 'the last good value must stay in effect');
-    });
-
     it('flags a non-numeric value', async () => {
         const h = run();
         await settle();
@@ -1584,27 +1533,6 @@ describe('preference inputs', () => {
         h.els.fontDisplay.dispatch('input');
 
         assert.ok(h.els.fontDisplay.classList.contains('is-invalid'));
-    });
-
-    it('restores the last good value on blur', async () => {
-        const h = run();
-        await settle();
-        h.els.scaleDisplay.value = '999';
-        h.els.scaleDisplay.dispatch('input');
-        h.els.scaleDisplay.dispatch('blur');
-
-        assert.strictEqual(h.els.scaleDisplay.value, '100');
-        assert.ok(!h.els.scaleDisplay.classList.contains('is-invalid'));
-    });
-
-    it('stays quiet while the field is empty mid-edit', async () => {
-        const h = run();
-        await settle();
-        h.els.scaleDisplay.value = '';
-        h.els.scaleDisplay.dispatch('input');
-
-        assert.ok(!h.els.scaleDisplay.classList.contains('is-invalid'), 'clearing the box to retype is not an error');
-        assert.strictEqual(appVars(h)['--ui-scale'], '1');
     });
 
     it('Enter commits the typed value by blurring the field', async () => {
@@ -1618,12 +1546,10 @@ describe('preference inputs', () => {
         assert.strictEqual(h.savedState().aiFontSize, 16);
     });
 
-    it('restores saved preferences', async () => {
+    it('restores saved font preferences', async () => {
         const h = run({ savedState: { uiScale: 80, aiFontSize: 15 } });
         await settle();
-        assert.strictEqual(h.els.scaleDisplay.value, '80');
         assert.strictEqual(h.els.fontDisplay.value, '15');
-        assert.strictEqual(appVars(h)['--ui-scale'], '0.8');
         assert.strictEqual(appVars(h)['--ai-font-size'], '15px');
     });
 
@@ -1636,63 +1562,12 @@ describe('preference inputs', () => {
         assert.ok('leftWidth' in state && 'detailsPct' in state);
     });
 
-    it('never uses the CSS zoom property anywhere, which broke canvas hit-testing', async () => {
+    it('takes a left-panel drag at face value', async () => {
         const h = run();
         await settle();
-        h.els.scaleDisplay.value = '120';
-        h.els.scaleDisplay.dispatch('input');
-
-        // zoom is not a layout-scale operation: it reflows the element at
-        // 1/ratio and scales the result, which is what let the sidebar contents
-        // spill over the graph, and it shifts getBoundingClientRect() away from
-        // the pointer. Scaling is now one custom property and nothing else.
-        assert.strictEqual(h.bodyEl.style.zoom, '', 'zooming <body> shifts the canvas away from the pointer');
-        assert.strictEqual(h.classEls['app-container'].style.zoom, '', 'zooming the grid container cuts off the right panel');
-        assert.strictEqual(h.classEls['sidebar-left'].style.zoom, '', 'a zoomed sidebar reflows too narrow and overflows');
-        assert.strictEqual(h.classEls['sidebar-right'].style.zoom, '', 'a zoomed sidebar reflows too narrow and overflows');
-        assert.strictEqual(appVars(h)['--ui-scale'], '1.2');
-    });
-
-    it('re-applies the right track width when the scale changes, leaving the left alone', async () => {
-        const h = run();
-        await settle();
-        h.els.scaleDisplay.value = '160';
-        h.els.scaleDisplay.dispatch('input');
-        assert.strictEqual(appVars(h)['--w-right'], '480px', 'the right panel still scales');
-        assert.strictEqual(appVars(h)['--w-left'], '240px', 'the fixed left panel must not move');
-
-        h.els.scaleDisplay.value = '100';
-        h.els.scaleDisplay.dispatch('input');
-        assert.strictEqual(appVars(h)['--w-right'], '300px', 'dropping back to 100% must restore the design width');
-        assert.strictEqual(appVars(h)['--w-left'], '240px');
-    });
-
-    it('takes the left drag at face value, since that panel is unscaled', async () => {
-        const h = run();
-        await settle();
-        h.els.scaleDisplay.value = '160';
-        h.els.scaleDisplay.dispatch('input');
-
-        // The left panel no longer scales, so pointer pixels are already the
-        // stored design pixels and must not be divided by the ratio. 500 is
-        // inside the 180..560 clamp so an over- or under-shoot would be visible.
         h.els.leftResizer.dispatch('pointerdown', { button: 0, clientX: 300, clientY: 0, preventDefault() { /* no-op */ } });
         h.windowEvent('pointermove', { clientX: 500 });
-        assert.strictEqual(appVars(h)['--w-left'], '500px', '500 pointer pixels is a 500px panel, not 500/1.6');
-    });
-
-    it('still divides the ratio out of a right-panel drag at high scale', async () => {
-        const h = run({ viewportWidth: 1200 });
-        await settle();
-        h.els.scaleDisplay.value = '160';
-        h.els.scaleDisplay.dispatch('input');
-
-        // The right panel is still scaled, so 600 pointer pixels from the right
-        // edge is 600/1.6 = 375 design pixels, re-emitted at 375*1.6. Without the
-        // division the stored width would be 600 and the track 960px instead.
-        h.els.rightResizer.dispatch('pointerdown', { button: 0, clientX: 600, clientY: 0, preventDefault() { /* no-op */ } });
-        h.windowEvent('pointermove', { clientX: 600 });
-        assert.strictEqual(appVars(h)['--w-right'], '600px', '600 scaled pixels is 375 design pixels, not 600');
+        assert.strictEqual(appVars(h)['--w-left'], '500px', '500 pointer pixels is a 500px panel');
     });
 });
 
