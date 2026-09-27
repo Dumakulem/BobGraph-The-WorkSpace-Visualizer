@@ -75,20 +75,6 @@
     --transition:      0.18s ease;
     --radius:          8px;
     --radius-sm:       5px;
-
-    /* ── Glass surface tokens ──────────────────────────────────────────
-       Layered on top of the --bg-* palette rather than replacing it, so
-       the graph palette above keeps its single source of truth. These are
-       translucent + backdrop-blurred, which only reads as glass when the
-       element behind them actually has something to show through. */
-    --glass-bg:        rgba(20, 25, 36, 0.72);
-    --glass-bg-strong: rgba(16, 21, 32, 0.86);
-    --glass-bg-raised: rgba(28, 37, 64, 0.55);
-    --glass-border:    rgba(255, 255, 255, 0.09);
-    --glass-blur:      16px;
-    --glass-inset:     inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    --shadow-lg:       0 18px 48px rgba(0, 0, 0, 0.55);
-    --ease-spring:     cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 *, *::before, *::after {
@@ -111,52 +97,25 @@ body, html {
 /* ─── Layout ──────────────────────────────────────── */
 
 .app-container {
-    /* Panel geometry lives in custom properties so the webview can resize and
-       collapse panels by writing one value, instead of rebuilding the whole
-       grid-template-columns string on every drag frame. */
-    --w-left: 240px;
-    --w-right: 300px;
-    --details-h: 55%;
     display: grid;
-    grid-template-columns: var(--w-left) 1fr var(--w-right);
+    grid-template-columns: 240px 1fr 300px;
     width: 100vw;
     height: 100vh;
-}
-
-/* A collapsed panel keeps a zero-width grid track so the graph absorbs the
-   reclaimed space, but must stop painting its border, padding and accent bar. */
-.app-container.is-collapsed-left .sidebar-left,
-.app-container.is-collapsed-right .sidebar-right {
-    overflow: hidden;
-    padding-left: 0;
-    padding-right: 0;
-    border-left: none;
-    border-right: none;
-}
-
-.app-container.is-collapsed-left .sidebar-left::after,
-.app-container.is-collapsed-right .sidebar-right::after {
-    display: none;
 }
 
 /* ─── Left Sidebar ────────────────────────────────── */
 
 .sidebar-left {
     background: linear-gradient(180deg,
-        var(--glass-bg) 0%,
-        var(--glass-bg-strong) 100%);
-    border-right: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-md);
+        var(--vscode-sideBar-background, #0f1520) 0%,
+        var(--vscode-sideBar-background, #0d1117) 100%);
+    border-right: 1px solid var(--vscode-sideBar-border, var(--border));
     display: flex;
     flex-direction: column;
     padding: 20px 16px 20px 18px;
     gap: 10px;
     position: relative;
     overflow-y: auto;
-    /* No backdrop-filter here: this panel sits beside the graph, so the only
-       thing behind it is the solid body colour. Blurring that is a no-op that
-       still costs a compositing layer. Real glass lives on the overlays that
-       genuinely overlap the canvas (.panel-toggles, .zoom-controls, .help-card). */
 }
 
 /* Thin accent bar along the top of the sidebar */
@@ -239,8 +198,7 @@ body, html {
     display: flex;
     align-items: center;
     gap: 12px;
-    /* Right padding clears the panel-toggle cluster pinned to the top right. */
-    padding: 8px 132px 8px 20px;
+    padding: 8px 20px;
     background-color: var(--vscode-editorWidget-background, var(--bg-card));
     border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border));
     font-size: 12px;
@@ -256,11 +214,7 @@ body, html {
     padding: 3px 10px;
     border-radius: var(--radius);
     font-size: 11px;
-    /* Explicit list rather than `all`: animating every property also animates
-       layout-affecting ones, which reads as lag on a click. */
-    transition: background var(--transition), border-color var(--transition),
-                color var(--transition), box-shadow var(--transition),
-                transform var(--transition);
+    transition: all var(--transition);
 }
 
 .btn-back:hover {
@@ -291,36 +245,29 @@ body, html {
 }
 
 .zoom-btn {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Deliberately not themed through --vscode-editorWidget-background: the host
-       injects that as an opaque colour, which would cancel the translucency this
-       effect depends on. These controls float over the canvas, so there is real
-       content behind them for the blur to sample. */
-    background: linear-gradient(160deg, rgba(28, 37, 64, 0.72) 0%, rgba(17, 24, 39, 0.82) 100%);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+    background: var(--vscode-editorWidget-background, linear-gradient(160deg, #18213a 0%, #111827 100%));
     color: var(--vscode-editor-foreground, var(--text-secondary));
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--vscode-editorWidget-border, rgba(29,111,216,0.3));
     border-radius: var(--radius-sm);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
     transition: background var(--transition), border-color var(--transition),
                 color var(--transition), transform var(--transition), box-shadow var(--transition);
-    box-shadow: var(--shadow-sm), var(--glass-inset);
+    box-shadow: var(--shadow-sm);
     user-select: none;
 }
 
 .zoom-btn:hover {
-    background: rgba(0, 212, 255, 0.16);
+    background: rgba(29, 111, 216, 0.2);
     border-color: var(--cyan);
     color: var(--cyan);
-    transform: scale(1.08);
-    box-shadow: var(--shadow-sm), 0 0 16px var(--cyan-glow);
+    transform: scale(1.12);
 }
 
 .zoom-btn:active {
@@ -331,10 +278,9 @@ body, html {
 
 .sidebar-right {
     background: linear-gradient(180deg,
-        var(--glass-bg) 0%,
-        var(--glass-bg-strong) 100%);
-    border-left: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-md);
+        var(--vscode-sideBar-background, #0f1520) 0%,
+        var(--vscode-sideBar-background, #0d1117) 100%);
+    border-left: 1px solid var(--vscode-sideBar-border, var(--border));
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -349,7 +295,7 @@ body, html {
 }
 
 .sidebar-right > .panel-section:first-child {
-    flex: 0 1 var(--details-h);
+    flex: 0 1 55%;
     overflow: hidden;
 }
 
@@ -368,17 +314,6 @@ body, html {
     padding: 12px 16px 10px;
     border-bottom: 1px solid var(--vscode-editorWidget-border, var(--border-subtle));
     background: rgba(255,255,255,0.015);
-}
-
-.agent-status-pill {
-    border: 1px solid var(--glass-border);
-    border-radius: 999px;
-    color: var(--vscode-descriptionForeground, var(--text-muted));
-    font-size: 10px;
-    line-height: 1;
-    padding: 5px 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
 }
 
 .panel-section h2,
@@ -555,12 +490,12 @@ body, html {
     flex-grow: 1;
     min-height: 0;
     overflow: hidden;
-    padding: 14px 14px 12px;
+    padding: 24px 16px;
     display: flex;
     flex-direction: column;
     gap: 10px;
-    align-items: stretch;
-    justify-content: flex-start;
+    align-items: center;
+    justify-content: center;
     color: var(--vscode-descriptionForeground, var(--text-muted));
     font-size: 12px;
     text-align: center;
@@ -573,100 +508,34 @@ body, html {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     text-align: left;
 }
 
 .agent-empty {
     color: var(--vscode-descriptionForeground, var(--text-muted));
     font-size: var(--ai-font-size, 12px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
     text-align: center;
-    padding: 26px 12px;
-    line-height: 1.5;
+    padding: 16px 8px;
 }
 
-.agent-empty strong {
-    color: var(--vscode-editor-foreground, var(--text-primary));
-    font-size: 13px;
-}
-
-.agent-empty-icon {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    opacity: 0.85;
-}
-
-.agent-suggestions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.agent-suggestion {
-    border: 1px solid var(--glass-border);
-    border-radius: 999px;
-    background: transparent;
-    color: var(--vscode-descriptionForeground, var(--text-secondary));
-    cursor: pointer;
-    font: inherit;
-    font-size: 11px;
-    padding: 6px 9px;
-    transition: background var(--transition), border-color var(--transition), color var(--transition);
-}
-
-.agent-suggestion:hover {
-    background: rgba(0, 212, 255, 0.08);
-    border-color: var(--cyan-dim);
-    color: var(--text-primary);
-}
-
-/* Shared bubble geometry. max-width keeps a long answer from spanning the full
-   panel edge to edge, which is what makes the two sides read as a conversation
-   rather than as stacked log lines. */
 .agent-message {
     border-radius: var(--radius);
-    padding: 10px 14px;
+    padding: 8px 10px;
     font-size: var(--ai-font-size, 12px);
-    line-height: 1.6;
-    max-width: 88%;
+    line-height: 1.5;
     white-space: pre-wrap;
     word-break: break-word;
-    transition: box-shadow var(--transition), border-color var(--transition);
 }
 
-/* User question: right-aligned, blue, with a soft glow. The squared-off
-   bottom-right corner is the visual "tail". */
 .agent-question {
-    align-self: flex-end;
-    background: linear-gradient(135deg, rgba(29, 111, 216, 0.32) 0%, rgba(20, 90, 176, 0.26) 100%);
-    border: 1px solid rgba(96, 165, 250, 0.38);
-    border-bottom-right-radius: 4px;
-    color: var(--text-primary);
-    box-shadow: 0 2px 12px rgba(29, 111, 216, 0.28);
+    background: rgba(29, 111, 216, 0.18);
+    border: 1px solid rgba(29, 111, 216, 0.35);
 }
 
-.agent-question:hover {
-    box-shadow: 0 2px 18px rgba(29, 111, 216, 0.42);
-}
-
-/* AI answer: left-aligned translucent card with a cyan rail, so the two sides
-   stay distinguishable without relying on colour alone. No backdrop-filter here
-   on purpose - the only thing behind a message is the sidebar gradient, so the
-   blur adds nothing while forcing a compositing layer per bubble. Translucency
-   plus the inset highlight is enough to read as glass. */
 .agent-answer {
-    align-self: flex-start;
-    background: var(--glass-bg-raised);
-    border: 1px solid var(--glass-border);
-    border-left: 3px solid var(--cyan);
-    border-bottom-left-radius: 4px;
-    color: var(--text-primary);
-    box-shadow: var(--shadow-sm), var(--glass-inset);
+    background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.04));
+    border-left: 3px solid var(--cyan-dim);
 }
 
 .agent-status {
@@ -682,74 +551,25 @@ body, html {
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    text-align: left;
-}
-
-.agent-composer {
-    display: flex;
-    align-items: flex-end;
     gap: 8px;
-    padding: 7px 7px 7px 14px;
-    border: 1px solid var(--vscode-input-border, var(--glass-border));
-    border-radius: 16px;
-    background: var(--glass-bg);
-    box-shadow: var(--glass-inset);
-    transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+    text-align: left;
 }
 
 #agentInput {
     width: 100%;
-    resize: none;
-    min-height: 28px;
+    resize: vertical;
+    min-height: 52px;
     max-height: 140px;
-    padding: 5px 0;
-    border: 0;
-    outline: 0;
-    background: transparent;
+    padding: 8px 10px;
+    border: 1px solid var(--vscode-input-border, var(--border));
+    border-radius: var(--radius-sm);
+    background: var(--vscode-input-background, var(--bg-card));
     color: var(--vscode-input-foreground, var(--text-primary));
     font: inherit;
 }
 
-.agent-composer:focus-within {
-    border-color: var(--cyan);
-    box-shadow: var(--glass-inset), 0 0 0 3px var(--cyan-glow);
-}
-
-.agent-send {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 30px;
-    height: 30px;
-    flex: 0 0 30px;
-    border: 0;
-    border-radius: 10px;
-    background: var(--cyan);
-    color: #06121a;
-    cursor: pointer;
-    transition: transform var(--transition), opacity var(--transition), background var(--transition);
-}
-
-.agent-send svg {
-    width: 16px;
-    height: 16px;
-}
-
-.agent-send:hover:not(:disabled) {
-    background: #33deff;
-    transform: translateY(-1px);
-}
-
-.agent-send:disabled {
-    cursor: not-allowed;
-    opacity: 0.35;
-}
-
-.agent-composer-hint {
-    color: var(--vscode-descriptionForeground, var(--text-muted));
-    font-size: 10px;
-    padding-left: 4px;
+#agentInput:focus {
+    outline: 1px solid var(--vscode-focusBorder, var(--cyan));
 }
 
 .agent-icon {
@@ -785,9 +605,7 @@ body, html {
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
-    transition: background var(--transition), border-color var(--transition),
-                color var(--transition), box-shadow var(--transition),
-                transform var(--transition);
+    transition: all var(--transition);
     width: 100%;
     white-space: nowrap;
     box-shadow: 0 2px 8px rgba(29,111,216,0.25);
@@ -864,7 +682,7 @@ body, html {
     flex-shrink: 0;
 }
 
-/* ─── Preference Controls (Font Size) ─── */
+/* ─── Preference Controls (UI Scale / Font Size) ─── */
 
 .pref-group {
     display: flex;
@@ -938,333 +756,4 @@ body, html {
     margin-left: 0;
     min-width: 34px;
     text-align: center;
-}
-
-/* ─── Panel Toggles ───────────────────────────────── */
-
-/* Pinned to the graph's top-right so the controls stay reachable even when a
-   side panel is collapsed - the toggles live outside both panels on purpose. */
-.panel-toggles {
-    position: absolute;
-    top: 8px;
-    right: 12px;
-    display: flex;
-    gap: 6px;
-    z-index: 15;
-}
-
-.panel-toggle {
-    min-width: 30px;
-    height: 28px;
-    padding: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    /* Pinned over the canvas, so backdrop-filter has the graph to sample. */
-    background: rgba(24, 33, 58, 0.72);
-    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-    backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-    color: var(--vscode-editor-foreground, var(--text-secondary));
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-sm);
-    font-size: 12px;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: var(--shadow-sm), var(--glass-inset);
-    user-select: none;
-    transition: background var(--transition), border-color var(--transition),
-                color var(--transition), box-shadow var(--transition);
-}
-
-.panel-toggle:hover {
-    background: rgba(0, 212, 255, 0.16);
-    border-color: var(--cyan, #00d4ff);
-    color: var(--cyan, #00d4ff);
-    box-shadow: var(--shadow-sm), 0 0 14px var(--cyan-glow);
-}
-
-.panel-toggle[aria-pressed="true"] {
-    background: rgba(29, 111, 216, 0.32);
-    border-color: var(--cyan, #00d4ff);
-    color: var(--cyan, #00d4ff);
-}
-
-/* ─── Panel Resizers ──────────────────────────────── */
-
-/* The horizontal grab handles sit inside the graph panel rather than inside the
-   sidebars: .sidebar-left scrolls, so an absolutely positioned child on its
-   inner edge would be clipped and unreachable. */
-.panel-resizer {
-    position: absolute;
-    top: 0;
-    width: 9px;
-    height: 100%;
-    z-index: 18;
-    cursor: col-resize;
-    background: transparent;
-}
-
-.panel-resizer::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    height: 100%;
-    width: 2px;
-    background: transparent;
-    transition: background var(--transition);
-}
-
-.panel-resizer-left { left: 0; }
-.panel-resizer-left::after { left: 0; }
-.panel-resizer-right { right: 0; }
-.panel-resizer-right::after { right: 0; }
-
-.panel-resizer:hover::after,
-.panel-resizer.is-dragging::after {
-    background: var(--cyan, #00d4ff);
-}
-
-/* The Node Details / AI Assistant split is a real flex item in the right
-   sidebar, not an overlay, so it participates in layout and cannot be clipped. */
-.panel-resizer-v {
-    flex: 0 0 7px;
-    cursor: row-resize;
-    position: relative;
-    background: transparent;
-}
-
-.panel-resizer-v::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 2px;
-    height: 3px;
-    background: transparent;
-    transition: background var(--transition);
-}
-
-.panel-resizer-v:hover::after,
-.panel-resizer-v.is-dragging::after {
-    background: var(--cyan, #00d4ff);
-}
-
-/* While a drag is live the pointer keeps crossing the Cytoscape canvas, which
-   would flicker the cursor and let canvas pan handlers steal the drag. */
-body.is-resizing,
-body.is-resizing-v {
-    user-select: none;
-    cursor: col-resize;
-}
-
-body.is-resizing-v { cursor: row-resize; }
-
-/* ─── Preference Inputs ───────────────────────────── */
-
-.pref-input {
-    width: 54px;
-    text-align: right;
-    background: var(--vscode-input-background, var(--bg-card, #161d2d));
-    color: var(--vscode-input-foreground, var(--text-primary, #e6edf3));
-    border: 1px solid var(--vscode-input-border, var(--border, rgba(255,255,255,0.1)));
-    border-radius: var(--radius-sm, 4px);
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 5px;
-    margin-left: auto;
-    cursor: text;
-}
-
-.pref-input:hover {
-    border-color: var(--cyan-dim, rgba(0,212,255,0.4));
-}
-
-.pref-input:focus {
-    outline: 1px solid var(--vscode-focusBorder, var(--cyan, #00d4ff));
-    border-color: var(--cyan, #00d4ff);
-}
-
-.pref-input.is-invalid {
-    border-color: var(--vscode-errorForeground, #f14c4c);
-    color: var(--vscode-errorForeground, #f14c4c);
-}
-
-.pref-input::-webkit-outer-spin-button,
-.pref-input::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-/* ─── Help Overlay ────────────────────────────────── */
-
-.help-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 28px;
-    background: rgba(0, 0, 0, 0.55);
-}
-
-.help-overlay.is-open { display: flex; }
-
-.help-card {
-    width: 100%;
-    max-width: 580px;
-    max-height: 100%;
-    overflow-y: auto;
-    /* The card sits on the scrim, so there is genuinely content behind it to
-       blur. Same reasoning as .help-overlay's background dimming it. */
-    background: var(--glass-bg-strong);
-    -webkit-backdrop-filter: blur(24px) saturate(140%);
-    backdrop-filter: blur(24px) saturate(140%);
-    color: var(--vscode-editor-foreground, var(--text-primary, #e6edf3));
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius, 6px);
-    box-shadow: var(--shadow-lg, 0 12px 32px rgba(0,0,0,0.45)), var(--glass-inset);
-    padding: 20px 22px 18px;
-}
-
-.help-card h2 {
-    margin: 0 0 4px;
-    font-size: 14px;
-    letter-spacing: 0.4px;
-}
-
-.help-card > p {
-    margin: 0 0 16px;
-    font-size: 12px;
-    color: var(--vscode-descriptionForeground, var(--text-muted, #8b98a9));
-}
-
-.help-grid {
-    display: grid;
-    gap: 12px;
-}
-
-.help-item {
-    display: grid;
-    grid-template-columns: 104px 1fr;
-    gap: 12px;
-    align-items: start;
-    font-size: 12px;
-    line-height: 1.55;
-}
-
-.help-item dt {
-    margin: 0;
-    font-weight: 600;
-    color: var(--cyan, #00d4ff);
-    letter-spacing: 0.3px;
-}
-
-.help-item dd {
-    margin: 0;
-    color: var(--vscode-editor-foreground, var(--text-secondary, #b6c2d1));
-}
-
-.help-item kbd {
-    font: inherit;
-    font-size: 11px;
-    padding: 1px 5px;
-    border: 1px solid var(--vscode-editorWidget-border, rgba(29,111,216,0.3));
-    border-radius: 3px;
-    background: var(--vscode-textCodeBlock-background, rgba(255,255,255,0.05));
-}
-
-.help-footer {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 18px;
-    padding-top: 14px;
-    border-top: 1px solid var(--vscode-editorWidget-border, var(--border-subtle, rgba(255,255,255,0.06)));
-}
-
-/* --- Interaction Polish ------------------------------- */
-
-/* A visible focus ring is the only affordance a keyboard user gets. :focus-visible
-   keeps it off mouse clicks, so buttons do not gain a ring on every press. */
-:where(button, input, [tabindex]):focus-visible {
-    outline: 2px solid var(--vscode-focusBorder, var(--cyan, #00d4ff));
-    outline-offset: 2px;
-}
-
-/* The separators are the only way to resize a panel, so their hit area is wider
-   than the 2px line that draws them. 9px keeps it grabbable without stealing
-   clicks from the graph along the panel edge. */
-
-.panel-resizer::after,
-.panel-resizer-v::after {
-    background: var(--vscode-editorWidget-border, var(--border-subtle, rgba(255, 255, 255, 0.07)));
-}
-
-.panel-resizer:focus-visible::after,
-.panel-resizer-v:focus-visible::after {
-    background: var(--vscode-focusBorder, var(--cyan, #00d4ff));
-}
-
-/* Thin scrollbars: the default chunky ones break up a dark panel. scrollbar-width
-   and scrollbar-color cover standards-based engines; the ::-webkit rules cover the
-   Chromium webview that actually runs here. */
-.sidebar-left,
-.sidebar-right,
-.help-card {
-    scrollbar-width: thin;
-    scrollbar-color: var(--vscode-scrollbarSlider-background, rgba(255, 255, 255, 0.18)) transparent;
-}
-
-::-webkit-scrollbar {
-    width: 9px;
-    height: 9px;
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-    background: var(--vscode-scrollbarSlider-background, rgba(255, 255, 255, 0.16));
-    border-radius: 5px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--vscode-scrollbarSlider-hoverBackground, rgba(255, 255, 255, 0.28));
-    background-clip: content-box;
-}
-
-::-webkit-scrollbar-corner {
-    background: transparent;
-}
-
-/* The dialog animates in; a reduced-motion preference drops it to a plain fade. */
-.help-overlay.is-open {
-    animation: overlay-fade 140ms ease-out;
-}
-
-.help-overlay.is-open .help-card {
-    animation: card-in 170ms var(--ease-spring);
-}
-
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        scroll-behavior: auto !important;
-        transition-duration: 0.01ms !important;
-    }
-}
-
-@keyframes overlay-fade {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
-
-@keyframes card-in {
-    *::after {
 }

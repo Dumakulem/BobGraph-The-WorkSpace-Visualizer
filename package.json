@@ -116,9 +116,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "npm run test:run",
-    "test:run": "node -e \"const {readdirSync,existsSync}=require('fs');const d='out/test';if(!existsSync(d))throw new Error('missing '+d+' - run npm run compile first');const files=readdirSync(d).filter(f=>f.endsWith('.unit.test.js')).map(f=>d+'/'+f);if(!files.length)throw new Error('no *.unit.test.js found in '+d);const r=require('child_process').spawnSync(process.execPath,['--test',...files],{stdio:'inherit'});process.exit(r.status??1)\"",
-    "test:unit": "npm run compile && npm run test:run",
+    "test": "npm run test:unit",
+    "test:unit": "npm run compile && node -e \"const {readdirSync}=require('fs');const files=readdirSync('out/test').filter(f=>f.endsWith('.unit.test.js')).map(f=>'out/test/'+f);require('child_process').spawnSync(process.execPath,['--test',...files],{stdio:'inherit'})\"",
     "test:integration": "vscode-test"
   },
   "devDependencies": {
