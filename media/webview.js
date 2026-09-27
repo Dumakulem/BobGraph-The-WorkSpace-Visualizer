@@ -166,7 +166,7 @@ let isLoading = false;
     const FONT_DEFAULT = 12;
     const FONT_STEP    = 1;
     const FONT_MIN     = 9;
-    const FONT_MAX     = 20;
+    const FONT_MAX     = 16;
 
     const FONT_BASE    = FONT_DEFAULT;
     const EDGE_FONT_BASE = 9;
@@ -1058,44 +1058,20 @@ let isLoading = false;
             leftHidden, rightHidden
         });
     }
-
-    /** Apply uiScale to the sidebar panels only.
-     *
-     *  IMPORTANT: zoom must NEVER be applied to <body> or .app-container.
-     *  Doing so causes three regressions:
-     *    1. The grid layout (100vw × 100vh) no longer fills the viewport, cutting
-     *       off the right sidebar.
-     *    2. The zoom-control overlay is displaced.
-     *    3. Cytoscape's mouse-hit detection uses getBoundingClientRect(); a body
-     *       zoom shifts the reported rect away from the actual pointer position,
-     *       making hover/click land on the wrong node.
-     *  Scoping zoom to .sidebar-left and .sidebar-right avoids all three issues
-     *  because the sidebars are independent flex columns — their zoom does not
-     *  affect the grid track sizes or the canvas coordinate space.
-     *
-     *  Note: Chromium's zoom reflows the element at a proportionally smaller
-     *  CSS size and then scales the result, so a zoomed sidebar still fills
-     *  its --w-left/--w-right track exactly. Track widths must therefore NOT
-     *  be pre-multiplied by the scale, or the panel would end up too wide.
-     */
     function applyScale(scale) {
+        uiScale = scale;
         const ratio = (scale / 100).toString();
-        const left  = document.querySelector('.sidebar-left');
-        const right = document.querySelector('.sidebar-right');
-        if (left)  left.style.zoom  = ratio;
-        if (right) right.style.zoom = ratio;
+        const container = document.querySelector('.app-container');
+        if (container) container.style.setProperty('--ui-scale', ratio);
+        // The tracks are derived from the saved pixel widths, so they have to be
+        // re-emitted at the new ratio or the panels would keep their old width.
+        applyPanelLayout();
         const display = document.getElementById('scaleDisplay');
         if (display) display.value = String(scale);
     }
 
-    /**
-     * Push the current font size into the live Cytoscape style sheet.
-     *
-     *  Cytoscape has no way to inherit a CSS custom property into canvas text, so
-     *  the style rules that were baked in at init have to be rewritten whenever the
-     *  preference changes. Skipped silently while no graph exists yet: the first
-     *  initGraph already reads the current size, so there is nothing to correct.
-     */
+
+
     function applyGraphFontSize() {
         if (typeof cy?.style !== 'function') { return; }
         try {
@@ -1118,19 +1094,11 @@ let isLoading = false;
         }
     }
 
-    /**
-     * Apply aiFontSize everywhere text is drawn: the AI panel, the graph nodes
-     * and edges, and the flowcharts (which are the same renderer).
-     *
-     *  Setting fontSize directly on #nodeInfo would be wiped every time
-     *  showNodeDetails() rebuilds its innerHTML. Instead we set a CSS custom
-     *  property on the stable .sidebar-right ancestor; the relevant CSS rules
-     *  read var(--ai-font-size) so the value survives any DOM reconstruction.
-     */
     function applyFontSize(size) {
         aiFontSize = size;
-        const sidebarRight = document.querySelector('.sidebar-right');
-        if (sidebarRight) sidebarRight.style.setProperty('--ai-font-size', size + 'px');
+
+        const container = document.querySelector('.app-container');
+        if (container) container.style.setProperty('--ai-font-size', size + 'px');
         const display = document.getElementById('fontDisplay');
         if (display) display.value = String(size);
         applyGraphFontSize();
@@ -1146,8 +1114,13 @@ let isLoading = false;
 
     function applyPanelLayout() {
         if (!appContainer) return;
+        // The left panel is fixed-size by design, so its track is the stored
+        // width in plain pixels. Only the right panel is still scaled, and there
+        // the UI Scale ratio is applied on the way out from the saved design
+        // width, which keeps a drag and a scale change from fighting over it.
+        const ratio = uiScale / 100;
         appContainer.style.setProperty('--w-left', (leftHidden ? 0 : leftWidth) + 'px');
-        appContainer.style.setProperty('--w-right', (rightHidden ? 0 : rightWidth) + 'px');
+        appContainer.style.setProperty('--w-right', (rightHidden ? 0 : rightWidth * ratio) + 'px');
         appContainer.style.setProperty('--details-h', detailsPct + '%');
         appContainer.classList.toggle('is-collapsed-left', leftHidden);
         appContainer.classList.toggle('is-collapsed-right', rightHidden);
@@ -1185,6 +1158,13 @@ let isLoading = false;
         });
     }
 
+    // The right panel's pointer coordinates are in CSS pixels, i.e. already
+    // scaled by --ui-scale, so the ratio is divided out before clamping: without
+    // this, dragging at 160% would make every frame 1.6x too large and the panel
+    // would shoot past PANEL_MAX. The left panel is unscaled, so its drag needs
+    // no correction.
+    const unscaled = px => px / (uiScale / 100);
+
     beginDrag(document.getElementById('leftResizer'), e => {
         leftWidth = Math.round(num(e.clientX, PANEL_MIN, PANEL_MAX, leftWidth));
         applyPanelLayout();
@@ -1194,7 +1174,7 @@ let isLoading = false;
         // Dragging the right panel's left edge leftwards makes it wider.
         const viewport = document.documentElement?.clientWidth ?? 0;
         const fromRight = viewport > 0 ? viewport - e.clientX : rightWidth;
-        rightWidth = Math.round(num(fromRight, PANEL_MIN, PANEL_MAX, rightWidth));
+        rightWidth = Math.round(num(unscaled(fromRight), PANEL_MIN, PANEL_MAX, rightWidth));
         applyPanelLayout();
     }, 'is-resizing');
 
